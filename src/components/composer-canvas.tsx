@@ -413,8 +413,6 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
       const canvas = internalCanvasRef.current;
       if(!canvas) return { display: 'none' };
 
-      const rect = canvas.getBoundingClientRect();
-
       const tempCtx = document.createElement('canvas').getContext('2d');
       if(!tempCtx) return { display: 'none' };
       tempCtx.font = `${editingText.fontSize * scale}px ${editingText.fontFamily}`;
@@ -423,8 +421,8 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
       
       return {
         position: 'absolute',
-        top: `${rect.top + pan.y + (editingText.y * scale)}px`,
-        left: `${rect.left + pan.x + (editingText.x * scale)}px`,
+        top: `${pan.y + (editingText.y * scale)}px`,
+        left: `${pan.x + (editingText.x * scale)}px`,
         width: `${textWidth + 20 * scale}px`,
         height: 'auto',
         minHeight: `${editingText.fontSize * scale * 1.2}px`,
