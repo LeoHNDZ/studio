@@ -50,7 +50,7 @@ export const ComposerCanvas = React.forwardRef<HTMLCanvasElement, ComposerCanvas
       if (backgroundImage) {
         ctx.drawImage(backgroundImage, 0, 0, canvas.width, canvas.height);
       } else {
-        ctx.fillStyle = 'hsl(var(--card))';
+        ctx.fillStyle = '#FFFFFF';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         ctx.fillStyle = 'hsl(var(--muted-foreground))'
         ctx.font = '14px Inter';
