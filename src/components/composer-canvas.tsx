@@ -87,25 +87,27 @@ export const ComposerCanvas = React.forwardRef<HTMLCanvasElement, ComposerCanvas
 
 
     React.useEffect(() => {
-        const canvas = internalCanvasRef.current;
-        const container = containerRef.current;
-        if (!container || !canvas) return;
+      const canvas = internalCanvasRef.current;
+      const container = containerRef.current;
+      if (!container || !canvas) return;
 
-        const resizeObserver = new ResizeObserver(() => {
-            if (!backgroundImage) {
-                redrawCanvas();
-            }
-        });
-
+      const resizeObserver = new ResizeObserver(() => {
         if (!backgroundImage) {
-            resizeObserver.observe(container);
-        } else {
-             // Reset scale and pan when a new image is loaded
-            setScale(1);
-            setPan({ x: 0, y: 0 });
+          redrawCanvas();
         }
+      });
 
-        return () => resizeObserver.disconnect();
+      if (!backgroundImage) {
+        resizeObserver.observe(container);
+      } else {
+        // Reset scale and pan when a new image is loaded
+        setScale(1);
+        setPan({ x: 0, y: 0 });
+      }
+
+      return () => {
+        resizeObserver.disconnect();
+      };
     }, [backgroundImage, redrawCanvas]);
 
     React.useEffect(() => {
