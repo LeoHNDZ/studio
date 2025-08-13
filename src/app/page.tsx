@@ -45,7 +45,10 @@ export default function Home() {
 
   React.useEffect(() => {
     if (printDataUrl) {
-      window.print();
+      const printable = document.querySelector('.printable');
+      if (printable) {
+        window.print();
+      }
       setPrintDataUrl(null); 
     }
   }, [printDataUrl]);
@@ -164,33 +167,32 @@ export default function Home() {
 
     setTimeout(() => {
         let dataUrl;
-        if (withBackground) {
-            dataUrl = canvas.toDataURL('image/png');
-        } else {
-            const printCanvas = document.createElement('canvas');
-            printCanvas.width = canvas.width;
-            printCanvas.height = canvas.height;
-            const ctx = printCanvas.getContext('2d');
-            if (!ctx) {
-                toast({ title: 'Error', description: 'Could not create print context.', variant: 'destructive' });
-                setSelectedTextId(currentSelectedId);
-                return;
-            }
-
-            ctx.fillStyle = 'white';
-            ctx.fillRect(0, 0, printCanvas.width, printCanvas.height);
-            
-            texts.forEach(text => {
-                ctx.font = `${text.fontSize}px ${text.fontFamily}`;
-                ctx.fillStyle = text.color;
-                ctx.textAlign = 'left';
-                ctx.textBaseline = 'top';
-                ctx.fillText(text.text, text.x, text.y);
-            });
-            
-            dataUrl = printCanvas.toDataURL('image/png');
+        const printCanvas = document.createElement('canvas');
+        printCanvas.width = canvas.width;
+        printCanvas.height = canvas.height;
+        const ctx = printCanvas.getContext('2d');
+        if (!ctx) {
+            toast({ title: 'Error', description: 'Could not create print context.', variant: 'destructive' });
+            setSelectedTextId(currentSelectedId);
+            return;
         }
 
+        if (withBackground && backgroundImage) {
+            ctx.drawImage(backgroundImage, 0, 0, printCanvas.width, printCanvas.height);
+        } else {
+            ctx.fillStyle = 'white';
+            ctx.fillRect(0, 0, printCanvas.width, printCanvas.height);
+        }
+        
+        texts.forEach(text => {
+            ctx.font = `${text.fontSize}px ${text.fontFamily}`;
+            ctx.fillStyle = text.color;
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'top';
+            ctx.fillText(text.text, text.x, text.y);
+        });
+        
+        dataUrl = printCanvas.toDataURL('image/png');
         setPrintDataUrl(dataUrl);
         setSelectedTextId(currentSelectedId);
     }, 100);
@@ -246,7 +248,7 @@ export default function Home() {
                   </Button>
                 </div>
               </header>
-              <main className="flex-1 p-4 overflow-hidden">
+              <main className="flex-1 p-4 overflow-auto">
                 <ComposerCanvas
                   ref={canvasRef}
                   backgroundImage={backgroundImage}
