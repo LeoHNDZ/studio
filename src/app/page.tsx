@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from 'react';
-import type { TextElement } from '@/lib/types';
+import type { TextElement, Contact } from '@/lib/types';
 import {
   Sidebar,
   SidebarContent,
@@ -22,8 +22,41 @@ export default function Home() {
   const [clearedBackgroundImage, setClearedBackgroundImage] = React.useState<HTMLImageElement | null>(null);
   const [texts, setTexts] = React.useState<TextElement[]>([]);
   const [selectedTextId, setSelectedTextId] = React.useState<string | null>(null);
+  const [contacts, setContacts] = React.useState<Contact[]>([]);
   const canvasRef = React.useRef<HTMLCanvasElement>(null);
   const { toast } = useToast();
+
+  React.useEffect(() => {
+    try {
+      const savedContacts = localStorage.getItem('contacts');
+      if (savedContacts) {
+        setContacts(JSON.parse(savedContacts));
+      }
+    } catch (error) {
+      console.error("Failed to load contacts from localStorage", error);
+    }
+  }, []);
+
+  const saveContacts = (updatedContacts: Contact[]) => {
+    try {
+      localStorage.setItem('contacts', JSON.stringify(updatedContacts));
+      setContacts(updatedContacts);
+    } catch (error) {
+      console.error("Failed to save contacts to localStorage", error);
+    }
+  };
+
+  const addContact = (name: string, details: string) => {
+    const newContact: Contact = { id: nanoid(), name, details };
+    const updatedContacts = [...contacts, newContact];
+    saveContacts(updatedContacts);
+  };
+
+  const deleteContact = (id: string) => {
+    const updatedContacts = contacts.filter(c => c.id !== id);
+    saveContacts(updatedContacts);
+  };
+
 
   const handleImageUpload = (file: File) => {
     const reader = new FileReader();
@@ -212,6 +245,9 @@ export default function Home() {
             onDeleteText={deleteText}
             hasBackgroundImage={!!backgroundImage}
             hasClearedBackgroundImage={!!clearedBackgroundImage}
+            contacts={contacts}
+            onAddContact={addContact}
+            onDeleteContact={deleteContact}
           />
         </SidebarContent>
       </Sidebar>

@@ -9,3 +9,9 @@ export type TextElement = {
   width?: number;
   height?: number;
 };
+
+export type Contact = {
+  id: string;
+  name: string;
+  details: string;
+};
