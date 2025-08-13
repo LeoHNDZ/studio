@@ -158,7 +158,6 @@ export default function Home() {
         return;
     }
 
-    // Temporarily deselect text to avoid printing the selection box
     const currentSelectedId = selectedTextId;
     setSelectedTextId(null);
 
@@ -172,7 +171,6 @@ export default function Home() {
             toast({ title: 'Error', description: 'Could not generate print image.', variant: 'destructive' });
         }
         
-        // Restore selection after printing is triggered
         setSelectedTextId(currentSelectedId);
     }, 100);
   };
