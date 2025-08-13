@@ -32,15 +32,6 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
       isPanning: false,
       panStart: { x: 0, y: 0 },
     });
-
-    const getTextMetrics = React.useCallback((ctx: CanvasRenderingContext2D, text: TextElement) => {
-      ctx.font = `${text.fontSize}px ${text.fontFamily}`;
-      const metrics = ctx.measureText(text.text);
-      return {
-        width: metrics.width,
-        height: text.fontSize,
-      };
-    }, []);
     
     const redrawCanvas = React.useCallback(() => {
         const canvas = internalCanvasRef.current;
@@ -74,7 +65,11 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
             ctx.fillText(text.text, text.x, text.y);
 
             if (text.id === selectedTextId) {
-                const { width, height } = getTextMetrics(ctx, text);
+                ctx.font = `${text.fontSize}px ${text.fontFamily}`;
+                const metrics = ctx.measureText(text.text);
+                const width = metrics.width;
+                const height = text.fontSize;
+
                 ctx.strokeStyle = 'hsl(var(--ring))';
                 ctx.lineWidth = 2 / scale;
                 ctx.setLineDash([6 / scale, 3 / scale]);
@@ -84,7 +79,7 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
         });
 
         ctx.restore();
-    }, [backgroundImage, texts, selectedTextId, getTextMetrics, canvasWidth, canvasHeight]);
+    }, [backgroundImage, texts, selectedTextId, canvasWidth, canvasHeight]);
     
     const resetView = React.useCallback(() => {
         const container = containerRef.current;
@@ -120,10 +115,13 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
           
           if (withBackground && backgroundImage) {
               ctx.drawImage(backgroundImage, 0, 0, canvasWidth, canvasHeight);
-          } else {
-              ctx.fillStyle = '#ffffff';
+          } else if (!withBackground) {
+              ctx.fillStyle = 'white';
               ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+          } else {
+              // transparent background for export if no image
           }
+
 
           texts.forEach((text) => {
               ctx.font = `${text.fontSize}px ${text.fontFamily}`;
@@ -137,22 +135,6 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
         },
         resetView,
      }));
-    
-    const handleResize = React.useCallback(() => {
-        redrawCanvas();
-    }, [redrawCanvas]);
-
-    React.useEffect(() => {
-        const container = containerRef.current;
-        if (!container) return;
-
-        const resizeObserver = new ResizeObserver(handleResize);
-        resizeObserver.observe(container);
-        
-        return () => {
-            resizeObserver.disconnect();
-        };
-    }, [handleResize]);
 
     const initializeView = React.useCallback(() => {
         const container = containerRef.current;
@@ -182,7 +164,15 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
         if (canvasWidth > 0 && canvasHeight > 0) {
             initializeView();
         }
-    }, [canvasWidth, canvasHeight, initializeView]);
+    }, [canvasWidth, canvasHeight]); // Only run when canvas dimensions are first set
+    
+    React.useEffect(() => {
+        const container = containerRef.current;
+        if (!container) return;
+        const resizeObserver = new ResizeObserver(() => redrawCanvas());
+        resizeObserver.observe(container);
+        return () => resizeObserver.disconnect();
+    }, [redrawCanvas]);
 
 
     const getTransformedMousePos = (e: React.MouseEvent | React.TouchEvent | React.WheelEvent) => {
@@ -213,7 +203,10 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
       let hit = false;
       for (let i = texts.length - 1; i >= 0; i--) {
         const text = texts[i];
-        const { width, height } = getTextMetrics(ctx, text);
+        ctx.font = `${text.fontSize}px ${text.fontFamily}`;
+        const metrics = ctx.measureText(text.text);
+        const width = metrics.width;
+        const height = text.fontSize;
         if (x >= text.x && x <= text.x + width && y >= text.y && y <= text.y + height) {
           setSelectedTextId(text.id);
           setDraggingState({
