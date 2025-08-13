@@ -158,11 +158,12 @@ export default function Home() {
   
   const handlePrint = (withBackground = false) => {
     const wasSelected = selectedTextId;
+    // Deselect text to avoid printing the selection box
     if (wasSelected) {
       setSelectedTextId(null);
     }
   
-    // Use a timeout to ensure deselection has rendered
+    // Use a timeout to ensure the deselection has rendered before capturing the canvas
     setTimeout(() => {
       const canvas = canvasRef.current?.getCanvas(withBackground);
       if (!canvas) {
@@ -177,7 +178,7 @@ export default function Home() {
       const dataUrl = canvas.toDataURL('image/png');
       setPrintDataUrl(dataUrl);
   
-      // Restore selection after setting print data, it won't affect printout
+      // Restore selection after setting print data. It won't affect the printout because the image is already generated.
       if (wasSelected) {
         setSelectedTextId(wasSelected);
       }
