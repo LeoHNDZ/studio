@@ -13,28 +13,32 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { getQuoteSuggestion } from '@/lib/actions';
-import { Loader2, Plus, Sparkles, Trash2, Upload, Wand2, X } from 'lucide-react';
+import { Loader2, Plus, RotateCcw, Sparkles, Trash2, Upload, Wand2, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent } from './ui/card';
 
 interface ComposerControlsProps {
   onImageUpload: (file: File) => void;
   onClearBackground: () => void;
+  onRestoreBackground: () => void;
   onAddText: (text: string) => void;
   selectedText: TextElement | null;
   onUpdateText: (id: string, newProps: Partial<TextElement>) => void;
   onDeleteText: (id: string) => void;
   hasBackgroundImage: boolean;
+  hasClearedBackgroundImage: boolean;
 }
 
 export function ComposerControls({
   onImageUpload,
   onClearBackground,
+  onRestoreBackground,
   onAddText,
   selectedText,
   onUpdateText,
   onDeleteText,
-  hasBackgroundImage
+  hasBackgroundImage,
+  hasClearedBackgroundImage
 }: ComposerControlsProps) {
   const { toast } = useToast();
   const fileInputRef = React.useRef<HTMLInputElement>(null);
@@ -84,6 +88,11 @@ export function ComposerControls({
           {hasBackgroundImage && (
              <Button variant="outline" className="w-full" onClick={onClearBackground}>
                 <X className="mr-2 h-4 w-4" /> Clear Background
+            </Button>
+          )}
+          {hasClearedBackgroundImage && !hasBackgroundImage && (
+             <Button variant="outline" className="w-full" onClick={onRestoreBackground}>
+                <RotateCcw className="mr-2 h-4 w-4" /> Restore Background
             </Button>
           )}
         </AccordionContent>

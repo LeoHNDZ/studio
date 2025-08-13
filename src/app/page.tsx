@@ -19,6 +19,7 @@ import { useToast } from '@/hooks/use-toast';
 
 export default function Home() {
   const [backgroundImage, setBackgroundImage] = React.useState<HTMLImageElement | null>(null);
+  const [clearedBackgroundImage, setClearedBackgroundImage] = React.useState<HTMLImageElement | null>(null);
   const [texts, setTexts] = React.useState<TextElement[]>([]);
   const [selectedTextId, setSelectedTextId] = React.useState<string | null>(null);
   const canvasRef = React.useRef<HTMLCanvasElement>(null);
@@ -35,6 +36,7 @@ export default function Home() {
           canvas.height = img.height;
         }
         setBackgroundImage(img);
+        setClearedBackgroundImage(null); // Clear any previously cleared image
       };
       img.src = e.target?.result as string;
     };
@@ -42,6 +44,7 @@ export default function Home() {
   };
   
   const clearBackgroundImage = () => {
+    setClearedBackgroundImage(backgroundImage);
     setBackgroundImage(null);
     const canvas = canvasRef.current;
     // Optionally reset canvas to a default size or fit container
@@ -49,6 +52,13 @@ export default function Home() {
       const rect = canvas.parentElement.getBoundingClientRect();
       canvas.width = rect.width;
       canvas.height = rect.height;
+    }
+  };
+
+  const restoreBackgroundImage = () => {
+    if (clearedBackgroundImage) {
+      setBackgroundImage(clearedBackgroundImage);
+      setClearedBackgroundImage(null);
     }
   };
 
@@ -172,11 +182,13 @@ export default function Home() {
           <ComposerControls
             onImageUpload={handleImageUpload}
             onClearBackground={clearBackgroundImage}
+            onRestoreBackground={restoreBackgroundImage}
             onAddText={addText}
             selectedText={selectedText}
             onUpdateText={updateText}
             onDeleteText={deleteText}
             hasBackgroundImage={!!backgroundImage}
+            hasClearedBackgroundImage={!!clearedBackgroundImage}
           />
         </SidebarContent>
       </Sidebar>
