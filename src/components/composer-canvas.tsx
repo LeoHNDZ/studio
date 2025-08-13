@@ -2,7 +2,6 @@
 
 import * as React from 'react';
 import type { TextElement } from '@/lib/types';
-import { useIsMobile } from '@/hooks/use-mobile';
 
 interface ComposerCanvasProps {
   backgroundImage: HTMLImageElement | null;
@@ -14,13 +13,12 @@ interface ComposerCanvasProps {
 
 export const ComposerCanvas = React.forwardRef<HTMLCanvasElement, ComposerCanvasProps>(
   ({ backgroundImage, texts, setTexts, selectedTextId, setSelectedTextId }, ref) => {
-    const isMobile = useIsMobile();
-    const canvasRef = React.useRef<HTMLCanvasElement>(null);
+    const internalCanvasRef = React.useRef<HTMLCanvasElement>(null);
+    React.useImperativeHandle(ref, () => internalCanvasRef.current as HTMLCanvasElement);
+    
     const containerRef = React.useRef<HTMLDivElement>(null);
 
     const [draggingState, setDraggingState] = React.useState<{ id: string; offsetX: number; offsetY: number } | null>(null);
-
-    React.useImperativeHandle(ref, () => canvasRef.current as HTMLCanvasElement);
 
     const getTextMetrics = React.useCallback((ctx: CanvasRenderingContext2D, text: TextElement) => {
       ctx.font = `${text.fontSize}px ${text.fontFamily}`;
@@ -32,29 +30,38 @@ export const ComposerCanvas = React.forwardRef<HTMLCanvasElement, ComposerCanvas
     }, []);
 
     const redrawCanvas = React.useCallback(() => {
-      const canvas = canvasRef.current;
+      const canvas = internalCanvasRef.current;
       if (!canvas) return;
       const ctx = canvas.getContext('2d');
       if (!ctx) return;
 
+      const dpr = window.devicePixelRatio || 1;
+      const displayWidth = canvas.clientWidth;
+      const displayHeight = canvas.clientHeight;
+      
+      if (canvas.width !== Math.floor(displayWidth * dpr) || canvas.height !== Math.floor(displayHeight * dpr)) {
+         canvas.width = Math.floor(displayWidth * dpr);
+         canvas.height = Math.floor(displayHeight * dpr);
+      }
+
+
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.fillStyle = 'hsl(var(--card))';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
 
       if (backgroundImage) {
-        const hRatio = canvas.width / backgroundImage.width;
-        const vRatio = canvas.height / backgroundImage.height;
-        const ratio = Math.min(hRatio, vRatio);
-        const centerShift_x = (canvas.width - backgroundImage.width * ratio) / 2;
-        const centerShift_y = (canvas.height - backgroundImage.height * ratio) / 2;
-        ctx.drawImage(backgroundImage, 0, 0, backgroundImage.width, backgroundImage.height, centerShift_x, centerShift_y, backgroundImage.width * ratio, backgroundImage.height * ratio);
+        ctx.drawImage(backgroundImage, 0, 0, canvas.width, canvas.height);
       } else {
+        ctx.fillStyle = 'hsl(var(--card))';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
         ctx.fillStyle = 'hsl(var(--muted-foreground))'
         ctx.font = '14px Inter';
         ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
         ctx.fillText('Upload a background image to start', canvas.width / 2, canvas.height / 2);
       }
 
+      const scaleX = canvas.width / (backgroundImage?.width || canvas.width);
+      const scaleY = canvas.height / (backgroundImage?.height || canvas.height);
+      
       texts.forEach((text) => {
         ctx.font = `${text.fontSize}px ${text.fontFamily}`;
         ctx.fillStyle = text.color;
@@ -73,50 +80,65 @@ export const ComposerCanvas = React.forwardRef<HTMLCanvasElement, ComposerCanvas
       });
     }, [backgroundImage, texts, selectedTextId, getTextMetrics]);
 
+
     React.useEffect(() => {
-      const canvas = canvasRef.current;
-      const container = containerRef.current;
-      if (!container || !canvas) return;
+        const canvas = internalCanvasRef.current;
+        const container = containerRef.current;
+        if (!container || !canvas) return;
 
-      const resizeObserver = new ResizeObserver(() => {
-        const dpr = window.devicePixelRatio || 1;
-        const rect = container.getBoundingClientRect();
-        canvas.width = rect.width * dpr;
-        canvas.height = rect.height * dpr;
-        const ctx = canvas.getContext('2d');
-        ctx?.scale(dpr, dpr);
-        canvas.style.width = `${rect.width}px`;
-        canvas.style.height = `${rect.height}px`;
+        const resizeObserver = new ResizeObserver(entries => {
+            if (!backgroundImage) {
+                for (let entry of entries) {
+                    const { width, height } = entry.contentRect;
+                    canvas.style.width = `${width}px`;
+                    canvas.style.height = `${height}px`;
+                    redrawCanvas();
+                }
+            }
+        });
+
+        if (!backgroundImage) {
+            resizeObserver.observe(container);
+        }
+
+        return () => resizeObserver.disconnect();
+    }, [backgroundImage, redrawCanvas]);
+
+    React.useEffect(() => {
+        const canvas = internalCanvasRef.current;
+        if (canvas && backgroundImage) {
+            canvas.style.width = 'auto';
+            canvas.style.height = 'auto';
+            canvas.style.maxWidth = '100%';
+            canvas.style.maxHeight = '100%';
+            canvas.width = backgroundImage.width;
+            canvas.height = backgroundImage.height;
+        }
         redrawCanvas();
-      });
-
-      resizeObserver.observe(container);
-      return () => resizeObserver.disconnect();
-    }, [redrawCanvas]);
+    }, [backgroundImage, redrawCanvas]);
 
     React.useEffect(() => {
       redrawCanvas();
-    }, [redrawCanvas]);
+    }, [texts, selectedTextId, redrawCanvas]);
 
     const getMousePos = (e: React.MouseEvent | React.TouchEvent) => {
-      const canvas = canvasRef.current;
+      const canvas = internalCanvasRef.current;
       if (!canvas) return { x: 0, y: 0 };
       const rect = canvas.getBoundingClientRect();
-      const dpr = window.devicePixelRatio || 1;
       
       const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
       const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
 
-      return {
-        x: (clientX - rect.left),
-        y: (clientY - rect.top),
-      };
+      const canvasX = (clientX - rect.left) * (canvas.width / rect.width);
+      const canvasY = (clientY - rect.top) * (canvas.height / rect.height);
+      
+      return { x: canvasX, y: canvasY };
     };
 
     const handleMouseDown = (e: React.MouseEvent | React.TouchEvent) => {
       e.preventDefault();
       const pos = getMousePos(e);
-      const ctx = canvasRef.current?.getContext('2d');
+      const ctx = internalCanvasRef.current?.getContext('2d');
       if (!ctx) return;
       
       let hit = false;
@@ -157,9 +179,9 @@ export const ComposerCanvas = React.forwardRef<HTMLCanvasElement, ComposerCanvas
     };
 
     return (
-      <div ref={containerRef} className="w-full h-full rounded-lg bg-card shadow-inner overflow-hidden touch-none">
+      <div ref={containerRef} className="w-full h-full rounded-lg bg-card shadow-inner overflow-auto flex justify-center items-center touch-none">
         <canvas
-          ref={canvasRef}
+          ref={internalCanvasRef}
           onMouseDown={handleMouseDown}
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUp}
@@ -167,9 +189,9 @@ export const ComposerCanvas = React.forwardRef<HTMLCanvasElement, ComposerCanvas
           onTouchStart={handleMouseDown}
           onTouchMove={handleMouseMove}
           onTouchEnd={handleMouseUp}
-          className="cursor-grab"
           style={{
             cursor: draggingState ? 'grabbing' : (selectedTextId ? 'pointer' : 'default'),
+            objectFit: 'contain'
           }}
         />
       </div>

@@ -29,11 +29,27 @@ export default function Home() {
     reader.onload = (e) => {
       const img = new Image();
       img.onload = () => {
+        const canvas = canvasRef.current;
+        if (canvas) {
+          canvas.width = img.width;
+          canvas.height = img.height;
+        }
         setBackgroundImage(img);
       };
       img.src = e.target?.result as string;
     };
     reader.readAsDataURL(file);
+  };
+  
+  const clearBackgroundImage = () => {
+    setBackgroundImage(null);
+    const canvas = canvasRef.current;
+    // Optionally reset canvas to a default size or fit container
+    if(canvas && canvas.parentElement){
+      const rect = canvas.parentElement.getBoundingClientRect();
+      canvas.width = rect.width;
+      canvas.height = rect.height;
+    }
   };
 
   const addText = (text: string, options?: Partial<Omit<TextElement, 'id' | 'text'>>) => {
@@ -155,10 +171,12 @@ export default function Home() {
         <SidebarContent className="p-0">
           <ComposerControls
             onImageUpload={handleImageUpload}
+            onClearBackground={clearBackgroundImage}
             onAddText={addText}
             selectedText={selectedText}
             onUpdateText={updateText}
             onDeleteText={deleteText}
+            hasBackgroundImage={!!backgroundImage}
           />
         </SidebarContent>
       </Sidebar>

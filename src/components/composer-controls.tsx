@@ -13,24 +13,28 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { getQuoteSuggestion } from '@/lib/actions';
-import { Loader2, Plus, Sparkles, Trash2, Upload, Wand2 } from 'lucide-react';
+import { Loader2, Plus, Sparkles, Trash2, Upload, Wand2, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent } from './ui/card';
 
 interface ComposerControlsProps {
   onImageUpload: (file: File) => void;
+  onClearBackground: () => void;
   onAddText: (text: string) => void;
   selectedText: TextElement | null;
   onUpdateText: (id: string, newProps: Partial<TextElement>) => void;
   onDeleteText: (id: string) => void;
+  hasBackgroundImage: boolean;
 }
 
 export function ComposerControls({
   onImageUpload,
+  onClearBackground,
   onAddText,
   selectedText,
   onUpdateText,
   onDeleteText,
+  hasBackgroundImage
 }: ComposerControlsProps) {
   const { toast } = useToast();
   const fileInputRef = React.useRef<HTMLInputElement>(null);
@@ -72,11 +76,16 @@ export function ComposerControls({
     <Accordion type="multiple" defaultValue={['item-1', 'item-2', 'item-3']} className="w-full">
       <AccordionItem value="item-1">
         <AccordionTrigger className="px-4">Background</AccordionTrigger>
-        <AccordionContent className="px-4">
+        <AccordionContent className="px-4 space-y-2">
           <Input type="file" accept="image/*" className="hidden" ref={fileInputRef} onChange={handleFileChange} />
           <Button variant="outline" className="w-full" onClick={() => fileInputRef.current?.click()}>
             <Upload className="mr-2 h-4 w-4" /> Upload Image
           </Button>
+          {hasBackgroundImage && (
+             <Button variant="outline" className="w-full" onClick={onClearBackground}>
+                <X className="mr-2 h-4 w-4" /> Clear Background
+            </Button>
+          )}
         </AccordionContent>
       </AccordionItem>
       <AccordionItem value="item-2">
