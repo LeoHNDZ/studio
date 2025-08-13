@@ -13,7 +13,7 @@ import {
 import { ComposerControls } from '@/components/composer-controls';
 import { ComposerCanvas } from '@/components/composer-canvas';
 import { Button } from '@/components/ui/button';
-import { Download, Printer, TextQuoteIcon } from 'lucide-react';
+import { Download, Printer, TextQuoteIcon, Image as ImageIcon } from 'lucide-react';
 import { nanoid } from 'nanoid';
 import { useToast } from '@/hooks/use-toast';
 
@@ -146,7 +146,7 @@ export default function Home() {
     }, 100); // Timeout to allow canvas to redraw
   };
 
-  const handlePrint = () => {
+  const handlePrint = (withBackground = false) => {
     const canvas = canvasRef.current;
     if (!canvas) {
         toast({ title: 'Error', description: 'Canvas not found.', variant: 'destructive' });
@@ -166,6 +166,10 @@ export default function Home() {
     const dpr = window.devicePixelRatio || 1;
     const canvasWidth = canvas.width / dpr;
     const canvasHeight = canvas.height / dpr;
+
+    const backgroundStyle = withBackground && backgroundImage
+        ? `background-image: url(${backgroundImage.src}); background-size: cover; background-repeat: no-repeat;`
+        : 'background-color: white;';
 
     let printContent = `
         <html>
@@ -190,6 +194,7 @@ export default function Home() {
                         width: 100%;
                         height: 100%;
                         overflow: hidden;
+                        ${backgroundStyle}
                     }
                     .text-element {
                         position: absolute;
@@ -256,9 +261,13 @@ export default function Home() {
           <header className="flex items-center justify-between p-2 border-b bg-card">
             <SidebarTrigger />
             <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" onClick={handlePrint}>
+              <Button variant="outline" size="sm" onClick={() => handlePrint(false)}>
                 <Printer className="mr-2 h-4 w-4" />
                 Print Text
+              </Button>
+               <Button variant="outline" size="sm" onClick={() => handlePrint(true)} disabled={!backgroundImage}>
+                <ImageIcon className="mr-2 h-4 w-4" />
+                Print with BG
               </Button>
               <Button size="sm" onClick={handleExport}>
                 <Download className="mr-2 h-4 w-4" />

@@ -19,6 +19,8 @@ export const ComposerCanvas = React.forwardRef<HTMLCanvasElement, ComposerCanvas
     const containerRef = React.useRef<HTMLDivElement>(null);
 
     const [draggingState, setDraggingState] = React.useState<{ id: string; offsetX: number; offsetY: number } | null>(null);
+    const [scale, setScale] = React.useState(1);
+    const [pan, setPan] = React.useState({ x: 0, y: 0 });
 
     const getTextMetrics = React.useCallback((ctx: CanvasRenderingContext2D, text: TextElement) => {
       ctx.font = `${text.fontSize}px ${text.fontFamily}`;
@@ -46,7 +48,10 @@ export const ComposerCanvas = React.forwardRef<HTMLCanvasElement, ComposerCanvas
         }
       }
 
+      ctx.save();
       ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.translate(pan.x, pan.y);
+      ctx.scale(scale, scale);
 
       if (backgroundImage) {
         ctx.drawImage(backgroundImage, 0, 0, canvas.width, canvas.height);
@@ -70,13 +75,15 @@ export const ComposerCanvas = React.forwardRef<HTMLCanvasElement, ComposerCanvas
         if (text.id === selectedTextId) {
           const { width, height } = getTextMetrics(ctx, text);
           ctx.strokeStyle = 'hsl(var(--ring))';
-          ctx.lineWidth = 2;
-          ctx.setLineDash([6, 3]);
+          ctx.lineWidth = 2 / scale;
+          ctx.setLineDash([6 / scale, 3 / scale]);
           ctx.strokeRect(text.x - 4, text.y - 4, width + 8, height + 8);
           ctx.setLineDash([]);
         }
       });
-    }, [backgroundImage, texts, selectedTextId, getTextMetrics]);
+
+      ctx.restore();
+    }, [backgroundImage, texts, selectedTextId, getTextMetrics, scale, pan]);
 
 
     React.useEffect(() => {
@@ -97,6 +104,10 @@ export const ComposerCanvas = React.forwardRef<HTMLCanvasElement, ComposerCanvas
 
         if (!backgroundImage) {
             resizeObserver.observe(container);
+        } else {
+             // Reset scale and pan when a new image is loaded
+            setScale(1);
+            setPan({ x: 0, y: 0 });
         }
 
         return () => resizeObserver.disconnect();
@@ -119,7 +130,7 @@ export const ComposerCanvas = React.forwardRef<HTMLCanvasElement, ComposerCanvas
       redrawCanvas();
     }, [texts, selectedTextId, redrawCanvas]);
 
-    const getMousePos = (e: React.MouseEvent | React.TouchEvent) => {
+    const getMousePos = (e: React.MouseEvent | React.TouchEvent | React.WheelEvent) => {
       const canvas = internalCanvasRef.current;
       if (!canvas) return { x: 0, y: 0 };
       const rect = canvas.getBoundingClientRect();
@@ -132,8 +143,12 @@ export const ComposerCanvas = React.forwardRef<HTMLCanvasElement, ComposerCanvas
       
       const canvasX = (clientX - rect.left) * scaleX;
       const canvasY = (clientY - rect.top) * scaleY;
+
+      // Adjust for pan and zoom
+      const transformedX = (canvasX - pan.x) / scale;
+      const transformedY = (canvasY - pan.y) / scale;
       
-      return { x: canvasX, y: canvasY };
+      return { x: transformedX, y: transformedY };
     };
 
     const handleMouseDown = (e: React.MouseEvent | React.TouchEvent) => {
@@ -179,8 +194,36 @@ export const ComposerCanvas = React.forwardRef<HTMLCanvasElement, ComposerCanvas
       setDraggingState(null);
     };
 
+    const handleWheel = (e: React.WheelEvent) => {
+        if (!e.shiftKey) return;
+        e.preventDefault();
+
+        const canvas = internalCanvasRef.current;
+        if (!canvas) return;
+        const rect = canvas.getBoundingClientRect();
+
+        const mouseX = e.clientX - rect.left;
+        const mouseY = e.clientY - rect.top;
+
+        const zoomFactor = 1.1;
+        const newScale = e.deltaY < 0 ? scale * zoomFactor : scale / zoomFactor;
+        
+        const worldX = (mouseX - pan.x) / scale;
+        const worldY = (mouseY - pan.y) / scale;
+
+        const newPanX = mouseX - worldX * newScale;
+        const newPanY = mouseY - worldY * newScale;
+
+        setScale(newScale);
+        setPan({x: newPanX, y: newPanY});
+    };
+
     return (
-      <div ref={containerRef} className="w-full h-full rounded-lg bg-card shadow-inner overflow-auto flex justify-center items-center touch-none">
+      <div 
+        ref={containerRef} 
+        className="w-full h-full rounded-lg bg-card shadow-inner overflow-auto flex justify-center items-center touch-none"
+        onWheel={handleWheel}
+      >
         <canvas
           ref={internalCanvasRef}
           onMouseDown={handleMouseDown}
