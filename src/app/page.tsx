@@ -65,11 +65,16 @@ export default function Home() {
       img.onload = () => {
         const canvas = canvasRef.current;
         if (canvas) {
-          canvas.width = img.width;
-          canvas.height = img.height;
+          const dpr = window.devicePixelRatio || 1;
+          canvas.width = img.width * dpr;
+          canvas.height = img.height * dpr;
+          canvas.style.width = `${img.width}px`;
+          canvas.style.height = `${img.height}px`;
+          const ctx = canvas.getContext('2d');
+          ctx?.scale(dpr, dpr);
         }
         setBackgroundImage(img);
-        setClearedBackgroundImage(null); // Clear any previously cleared image
+        setClearedBackgroundImage(null); 
       };
       img.src = e.target?.result as string;
     };
@@ -91,12 +96,14 @@ export default function Home() {
   const addText = (text: string, options?: Partial<Omit<TextElement, 'id' | 'text'>>) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
+
+    const dpr = window.devicePixelRatio || 1;
     
     const newText: TextElement = {
       id: nanoid(),
       text,
-      x: canvas.width / 2,
-      y: canvas.height / 2,
+      x: (canvas.width / dpr) / 2,
+      y: (canvas.height / dpr) / 2,
       fontSize: 48,
       fontFamily: 'Inter',
       color: '#000000',
@@ -130,7 +137,6 @@ export default function Home() {
       return;
     }
     
-    // Temporarily deselect to hide selection box
     const currentSelectedId = selectedTextId;
     setSelectedTextId(null);
 
@@ -141,9 +147,8 @@ export default function Home() {
       link.href = dataUrl;
       link.click();
       
-      // Reselect
       setSelectedTextId(currentSelectedId);
-    }, 100); // Timeout to allow canvas to redraw
+    }, 100); 
   };
 
   const handlePrint = (withBackground = false) => {
@@ -153,7 +158,7 @@ export default function Home() {
         return;
     }
   
-    const printWindow = window.open('', '', `height=${canvas.height},width=${canvas.width}`);
+    const printWindow = window.open('', '', `height=${canvas.style.height},width=${canvas.style.width}`);
     if (!printWindow) {
         toast({
             title: 'Error',
@@ -163,9 +168,8 @@ export default function Home() {
         return;
     }
 
-    const dpr = window.devicePixelRatio || 1;
-    const canvasWidth = canvas.width / dpr;
-    const canvasHeight = canvas.height / dpr;
+    const canvasWidth = parseInt(canvas.style.width, 10) || canvas.width;
+    const canvasHeight = parseInt(canvas.style.height, 10) || canvas.height;
 
     const backgroundStyle = withBackground && backgroundImage
         ? `background-image: url(${backgroundImage.src}); background-size: cover; background-repeat: no-repeat;`
@@ -209,10 +213,7 @@ export default function Home() {
     `;
     
     texts.forEach(text => {
-        const x = text.x / dpr;
-        const y = text.y / dpr;
-        const fontSize = text.fontSize / dpr;
-        printContent += `<div class="text-element" style="left: ${x}px; top: ${y}px; font-size: ${fontSize}px; color: ${text.color}; font-family: '${text.fontFamily}';">${text.text}</div>`;
+        printContent += `<div class="text-element" style="left: ${text.x}px; top: ${text.y}px; font-size: ${text.fontSize}px; color: ${text.color}; font-family: '${text.fontFamily}';">${text.text}</div>`;
     });
 
     printContent += `
