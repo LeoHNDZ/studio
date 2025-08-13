@@ -31,7 +31,6 @@ export default function Home() {
   const [canvasWidth, setCanvasWidth] = React.useState<number>(0);
   const [canvasHeight, setCanvasHeight] = React.useState<number>(0);
   
-  const [printDataUrl, setPrintDataUrl] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     const img = new Image();
@@ -42,18 +41,6 @@ export default function Home() {
       setBackgroundImage(img);
     };
   }, []);
-
-  React.useEffect(() => {
-    if (printDataUrl) {
-      const handleAfterPrint = () => {
-        setPrintDataUrl(null);
-        window.removeEventListener('afterprint', handleAfterPrint);
-      };
-      window.addEventListener('afterprint', handleAfterPrint);
-      window.print();
-    }
-  }, [printDataUrl]);
-
 
   React.useEffect(() => {
     try {
@@ -162,101 +149,126 @@ export default function Home() {
     if (wasSelected) {
       setSelectedTextId(null);
     }
-  
-    // Use a timeout to ensure the deselection has rendered before capturing the canvas
+
     setTimeout(() => {
       const canvas = canvasRef.current?.getCanvas(withBackground);
       if (!canvas) {
-        toast({ title: 'Error', description: 'Could not generate print image.', variant: 'destructive' });
-        // Restore selection if print fails
-        if (wasSelected) {
-          setSelectedTextId(wasSelected);
-        }
-        return;
+          toast({ title: 'Error', description: 'Could not generate print image.', variant: 'destructive' });
+          if (wasSelected) setSelectedTextId(wasSelected);
+          return;
       }
       
       const dataUrl = canvas.toDataURL('image/png');
-      setPrintDataUrl(dataUrl);
-  
-      // Restore selection after setting print data. It won't affect the printout because the image is already generated.
-      if (wasSelected) {
-        setSelectedTextId(wasSelected);
+      
+      const iframe = document.createElement('iframe');
+      iframe.style.display = 'none';
+      document.body.appendChild(iframe);
+      
+      const iframeDoc = iframe.contentWindow?.document;
+      if (!iframeDoc) {
+          toast({ title: 'Error', description: 'Could not create print frame.', variant: 'destructive' });
+          if (wasSelected) setSelectedTextId(wasSelected);
+          document.body.removeChild(iframe);
+          return;
       }
+
+      iframeDoc.open();
+      iframeDoc.write(`
+          <html>
+              <head>
+                  <title>Print</title>
+                  <style>
+                      @page { size: letter; margin: 0; }
+                      body { margin: 0; }
+                      img { width: 100%; height: 100%; object-fit: contain; }
+                  </style>
+              </head>
+              <body>
+                  <img src="${dataUrl}" />
+              </body>
+          </html>
+      `);
+      iframeDoc.close();
+
+      iframe.contentWindow?.focus();
+      iframe.contentWindow?.print();
+
+      // The timeout gives the browser time to open the print dialog.
+      setTimeout(() => {
+          document.body.removeChild(iframe);
+          if (wasSelected) {
+              setSelectedTextId(wasSelected);
+          }
+      }, 500);
+
     }, 100);
   };
 
 
   return (
     <>
-      <div className="no-print">
-        <SidebarProvider>
-          <Sidebar className="border-r bg-card">
-            <SidebarHeader className="p-4 flex items-center justify-between border-b">
-              <div className="flex items-center gap-2">
-                <TextQuoteIcon className="w-6 h-6 text-primary-foreground" />
-                <h1 className="text-xl font-semibold font-headline">ImageComposer</h1>
-              </div>
-            </SidebarHeader>
-            <SidebarContent className="p-0">
-              <ComposerControls
-                onClearBackground={clearBackgroundImage}
-                onRestoreBackground={restoreBackgroundImage}
-                onAddText={addText}
-                selectedText={selectedText}
-                onUpdateText={updateText}
-                onDeleteText={deleteText}
-                hasBackgroundImage={!!backgroundImage}
-                hasClearedBackgroundImage={!!clearedBackgroundImage}
-                contacts={contacts}
-                onAddContact={addContact}
-                onDeleteContact={deleteContact}
-              />
-            </SidebarContent>
-          </Sidebar>
-          <SidebarInset>
-            <div className="h-screen flex flex-col bg-background">
-              <header className="flex-shrink-0 flex items-center justify-between p-2 border-b bg-card">
-                <SidebarTrigger />
-                <div className="flex items-center gap-2">
-                  <Button variant="outline" size="sm" onClick={() => canvasRef.current?.resetView()}>
-                    <RefreshCcw className="mr-2 h-4 w-4" />
-                    Reset View
-                  </Button>
-                  <Button variant="outline" size="sm" onClick={() => handlePrint(false)}>
-                    <Printer className="mr-2 h-4 w-4" />
-                    Print Text
-                  </Button>
-                  <Button variant="outline" size="sm" onClick={() => handlePrint(true)} disabled={!backgroundImage}>
-                    <ImageIcon className="mr-2 h-4 w-4" />
-                    Print with BG
-                  </Button>
-                  <Button size="sm" onClick={handleExport}>
-                    <Download className="mr-2 h-4 w-4" />
-                    Export PNG
-                  </Button>
-                </div>
-              </header>
-              <main className="flex-1 p-4 overflow-auto">
-                <ComposerCanvas
-                  ref={canvasRef}
-                  backgroundImage={backgroundImage}
-                  texts={texts}
-                  setTexts={setTexts}
-                  selectedTextId={selectedTextId}
-                  setSelectedTextId={setSelectedTextId}
-                  canvasWidth={canvasWidth}
-                  canvasHeight={canvasHeight}
-                />
-              </main>
+      <SidebarProvider>
+        <Sidebar className="border-r bg-card">
+          <SidebarHeader className="p-4 flex items-center justify-between border-b">
+            <div className="flex items-center gap-2">
+              <TextQuoteIcon className="w-6 h-6 text-primary-foreground" />
+              <h1 className="text-xl font-semibold font-headline">ImageComposer</h1>
             </div>
-          </SidebarInset>
-        </SidebarProvider>
-      </div>
-      {printDataUrl && (
-        <div className="printable">
-          <img src={printDataUrl} alt="Print Content" />
-        </div>
-      )}
+          </SidebarHeader>
+          <SidebarContent className="p-0">
+            <ComposerControls
+              onClearBackground={clearBackgroundImage}
+              onRestoreBackground={restoreBackgroundImage}
+              onAddText={addText}
+              selectedText={selectedText}
+              onUpdateText={updateText}
+              onDeleteText={deleteText}
+              hasBackgroundImage={!!backgroundImage}
+              hasClearedBackgroundImage={!!clearedBackgroundImage}
+              contacts={contacts}
+              onAddContact={addContact}
+              onDeleteContact={deleteContact}
+            />
+          </SidebarContent>
+        </Sidebar>
+        <SidebarInset>
+          <div className="h-screen flex flex-col bg-background">
+            <header className="flex-shrink-0 flex items-center justify-between p-2 border-b bg-card">
+              <SidebarTrigger />
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" onClick={() => canvasRef.current?.resetView()}>
+                  <RefreshCcw className="mr-2 h-4 w-4" />
+                  Reset View
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => handlePrint(false)}>
+                  <Printer className="mr-2 h-4 w-4" />
+                  Print Text
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => handlePrint(true)} disabled={!backgroundImage}>
+                  <ImageIcon className="mr-2 h-4 w-4" />
+                  Print with BG
+                </Button>
+                <Button size="sm" onClick={handleExport}>
+                  <Download className="mr-2 h-4 w-4" />
+                  Export PNG
+                </Button>
+              </div>
+            </header>
+            <main className="flex-1 p-4 overflow-auto">
+              <ComposerCanvas
+                ref={canvasRef}
+                backgroundImage={backgroundImage}
+                texts={texts}
+                setTexts={setTexts}
+                selectedTextId={selectedTextId}
+                setSelectedTextId={setSelectedTextId}
+                canvasWidth={canvasWidth}
+                canvasHeight={canvasHeight}
+              />
+            </main>
+          </div>
+        </SidebarInset>
+      </SidebarProvider>
     </>
   );
 }
