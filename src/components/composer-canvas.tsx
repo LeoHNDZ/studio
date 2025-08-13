@@ -64,13 +64,12 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
         ctx.translate(pan.x, pan.y);
         ctx.scale(scale, scale);
 
-        ctx.fillStyle = '#f3f4f6';
-        ctx.fillRect(0, 0, canvasWidth, canvasHeight);
         
         if (backgroundImage) {
             ctx.drawImage(backgroundImage, 0, 0, canvasWidth, canvasHeight);
         } else {
-            // No background image specific placeholder text has been removed to keep it clean.
+            ctx.fillStyle = '#f3f4f6'; // light gray
+            ctx.fillRect(0, 0, canvasWidth, canvasHeight);
         }
         
         texts.forEach((text) => {
@@ -143,8 +142,8 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
     }, [redrawCanvas]);
 
     React.useEffect(() => {
-      resetView();
-    }, [canvasWidth, canvasHeight, resetView]);
+        resetView();
+    }, [resetView]);
 
     React.useEffect(() => {
       redrawCanvas();
