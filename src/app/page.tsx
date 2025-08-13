@@ -18,6 +18,9 @@ import { nanoid } from 'nanoid';
 import { useToast } from '@/hooks/use-toast';
 
 const DEFAULT_IMAGE_URL = '/Ticket.png';
+const DEFAULT_CANVAS_WIDTH = 800;
+const DEFAULT_CANVAS_HEIGHT = 600;
+
 
 export default function Home() {
   const [backgroundImage, setBackgroundImage] = React.useState<HTMLImageElement | null>(null);
@@ -28,8 +31,8 @@ export default function Home() {
   const canvasRef = React.useRef<ComposerCanvasHandle>(null);
   const { toast } = useToast();
 
-  const [canvasWidth, setCanvasWidth] = React.useState<number | null>(null);
-  const [canvasHeight, setCanvasHeight] = React.useState<number | null>(null);
+  const [canvasWidth, setCanvasWidth] = React.useState<number>(DEFAULT_CANVAS_WIDTH);
+  const [canvasHeight, setCanvasHeight] = React.useState<number>(DEFAULT_CANVAS_HEIGHT);
   
   React.useEffect(() => {
     const img = new Image();
@@ -77,8 +80,8 @@ export default function Home() {
         setClearedBackgroundImage(backgroundImage);
     }
     setBackgroundImage(null);
-    setCanvasWidth(800);
-    setCanvasHeight(600);
+    setCanvasWidth(DEFAULT_CANVAS_WIDTH);
+    setCanvasHeight(DEFAULT_CANVAS_HEIGHT);
   };
 
   const restoreBackgroundImage = () => {
@@ -152,40 +155,11 @@ export default function Home() {
         toast({ title: 'Error', description: 'Canvas not found.', variant: 'destructive' });
         return;
     }
-
-    const dpr = window.devicePixelRatio || 1;
-    const printCanvasWidth = canvas.width / dpr;
-    const printCanvasHeight = canvas.height / dpr;
-
-    const printCanvas = document.createElement('canvas');
-    printCanvas.width = printCanvasWidth;
-    printCanvas.height = printCanvasHeight;
     
-    const ctx = printCanvas.getContext('2d');
-
-    if (!ctx) {
-        toast({ title: 'Error', description: 'Could not create print context.', variant: 'destructive' });
-        return;
-    }
+    // Use the full canvas data URL directly
+    const dataUrl = canvas.toDataURL('image/png');
     
-    if (withBackground && backgroundImage) {
-      ctx.drawImage(backgroundImage, 0, 0, printCanvasWidth, printCanvasHeight);
-    } else {
-      ctx.fillStyle = 'white';
-      ctx.fillRect(0, 0, printCanvasWidth, printCanvasHeight);
-    }
-    
-    texts.forEach(text => {
-        ctx.font = `${text.fontSize}px ${text.fontFamily}`;
-        ctx.fillStyle = text.color;
-        ctx.textAlign = 'left';
-        ctx.textBaseline = 'top';
-        ctx.fillText(text.text, text.x, text.y);
-    });
-    
-    const dataUrl = printCanvas.toDataURL('image/png');
-    
-    const printWindow = window.open('', '', `height=${printCanvasHeight},width=${printCanvasWidth}`);
+    const printWindow = window.open('', '', `height=${canvas.height},width=${canvas.width}`);
     
     if (!printWindow) {
         toast({
@@ -196,31 +170,44 @@ export default function Home() {
         return;
     }
 
-    printWindow.document.write(`
-        <html>
-            <head>
-                <title>Print</title>
-                <style>
-                    @page {
-                        size: auto;
-                        margin: 0;
-                    }
-                    body {
-                        margin: 0;
-                        background-color: ${withBackground ? 'transparent' : 'white'};
-                    }
-                    img {
-                        width: 100%;
-                        height: auto;
-                        object-fit: contain;
-                    }
-                </style>
-            </head>
-            <body>
-                <img src="${dataUrl}" />
-            </body>
-        </html>
-    `);
+    if (withBackground) {
+        printWindow.document.write(`
+            <html>
+                <head><title>Print</title></head>
+                <body style="margin: 0;"><img src="${dataUrl}" style="width: 100%;"></body>
+            </html>
+        `);
+    } else {
+        const printCanvas = document.createElement('canvas');
+        printCanvas.width = canvas.width;
+        printCanvas.height = canvas.height;
+        const ctx = printCanvas.getContext('2d');
+        if (!ctx) {
+            toast({ title: 'Error', description: 'Could not create print context.', variant: 'destructive' });
+            return;
+        }
+
+        ctx.fillStyle = 'white';
+        ctx.fillRect(0, 0, printCanvas.width, printCanvas.height);
+        
+        texts.forEach(text => {
+            ctx.font = `${text.fontSize}px ${text.fontFamily}`;
+            ctx.fillStyle = text.color;
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'top';
+            ctx.fillText(text.text, text.x, text.y);
+        });
+        
+        const textOnlyDataUrl = printCanvas.toDataURL('image/png');
+        
+        printWindow.document.write(`
+            <html>
+                <head><title>Print</title></head>
+                <body style="margin: 0;"><img src="${textOnlyDataUrl}" style="width: 100%;"></body>
+            </html>
+        `);
+    }
+
 
     printWindow.document.close();
     printWindow.focus();

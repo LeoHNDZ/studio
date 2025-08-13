@@ -9,8 +9,8 @@ interface ComposerCanvasProps {
   setTexts: React.Dispatch<React.SetStateAction<TextElement[]>>;
   selectedTextId: string | null;
   setSelectedTextId: (id: string | null) => void;
-  canvasWidth: number | null;
-  canvasHeight: number | null;
+  canvasWidth: number;
+  canvasHeight: number;
 }
 
 export interface ComposerCanvasHandle {
@@ -41,62 +41,56 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
         height: text.fontSize,
       };
     }, []);
-
+    
     const redrawCanvas = React.useCallback(() => {
-      const canvas = internalCanvasRef.current;
-      if (!canvas || !containerRef.current) return;
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return;
-      
-      const { scale, pan } = viewStateRef.current;
-      const dpr = window.devicePixelRatio || 1;
-      
-      const containerWidth = containerRef.current.clientWidth;
-      const containerHeight = containerRef.current.clientHeight;
+        const canvas = internalCanvasRef.current;
+        if (!canvas || !containerRef.current) return;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
 
-      const effectiveCanvasWidth = canvasWidth || containerWidth;
-      const effectiveCanvasHeight = canvasHeight || containerHeight;
+        const { scale, pan } = viewStateRef.current;
+        const dpr = window.devicePixelRatio || 1;
 
-      if (canvas.width !== Math.floor(effectiveCanvasWidth * dpr) || canvas.height !== Math.floor(effectiveCanvasHeight * dpr)) {
-         canvas.width = Math.floor(effectiveCanvasWidth * dpr);
-         canvas.height = Math.floor(effectiveCanvasHeight * dpr);
-         canvas.style.width = `${effectiveCanvasWidth}px`;
-         canvas.style.height = `${effectiveCanvasHeight}px`;
-         ctx.scale(dpr,dpr);
-      }
-      
-      ctx.save();
-      ctx.clearRect(0, 0, effectiveCanvasWidth, effectiveCanvasHeight);
-      ctx.translate(pan.x, pan.y);
-      ctx.scale(scale, scale);
-
-      ctx.fillStyle = '#f3f4f6';
-      ctx.fillRect(0, 0, effectiveCanvasWidth, effectiveCanvasHeight);
-      
-      if (backgroundImage) {
-        ctx.drawImage(backgroundImage, 0, 0, canvasWidth!, canvasHeight!);
-      } else {
-         // No background image specific placeholder text has been removed to keep it clean.
-      }
-      
-      texts.forEach((text) => {
-        ctx.font = `${text.fontSize}px ${text.fontFamily}`;
-        ctx.fillStyle = text.color;
-        ctx.textAlign = 'left';
-        ctx.textBaseline = 'top';
-        ctx.fillText(text.text, text.x, text.y);
-
-        if (text.id === selectedTextId) {
-          const { width, height } = getTextMetrics(ctx, text);
-          ctx.strokeStyle = 'hsl(var(--ring))';
-          ctx.lineWidth = 2 / scale;
-          ctx.setLineDash([6 / scale, 3 / scale]);
-          ctx.strokeRect(text.x - 4, text.y - 4, width + 8, height + 8);
-          ctx.setLineDash([]);
+        if (canvas.width !== Math.floor(canvasWidth * dpr) || canvas.height !== Math.floor(canvasHeight * dpr)) {
+            canvas.width = Math.floor(canvasWidth * dpr);
+            canvas.height = Math.floor(canvasHeight * dpr);
+            canvas.style.width = `${canvasWidth}px`;
+            canvas.style.height = `${canvasHeight}px`;
         }
-      });
+        ctx.scale(dpr,dpr);
 
-      ctx.restore();
+        ctx.save();
+        ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+        ctx.translate(pan.x, pan.y);
+        ctx.scale(scale, scale);
+
+        ctx.fillStyle = '#f3f4f6';
+        ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+        
+        if (backgroundImage) {
+            ctx.drawImage(backgroundImage, 0, 0, canvasWidth, canvasHeight);
+        } else {
+            // No background image specific placeholder text has been removed to keep it clean.
+        }
+        
+        texts.forEach((text) => {
+            ctx.font = `${text.fontSize}px ${text.fontFamily}`;
+            ctx.fillStyle = text.color;
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'top';
+            ctx.fillText(text.text, text.x, text.y);
+
+            if (text.id === selectedTextId) {
+                const { width, height } = getTextMetrics(ctx, text);
+                ctx.strokeStyle = 'hsl(var(--ring))';
+                ctx.lineWidth = 2 / scale;
+                ctx.setLineDash([6 / scale, 3 / scale]);
+                ctx.strokeRect(text.x - 4, text.y - 4, width + 8, height + 8);
+                ctx.setLineDash([]);
+            }
+        });
+
+        ctx.restore();
     }, [backgroundImage, texts, selectedTextId, getTextMetrics, canvasWidth, canvasHeight]);
     
     const resetView = React.useCallback(() => {
@@ -150,7 +144,7 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
 
     React.useEffect(() => {
       resetView();
-    }, [resetView]);
+    }, [canvasWidth, canvasHeight, resetView]);
 
     React.useEffect(() => {
       redrawCanvas();
