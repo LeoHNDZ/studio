@@ -75,15 +75,11 @@ export default function Home() {
   const clearBackgroundImage = () => {
     setClearedBackgroundImage(backgroundImage);
     setBackgroundImage(null);
-    setCanvasWidth(null);
-    setCanvasHeight(null);
   };
 
   const restoreBackgroundImage = () => {
     if (clearedBackgroundImage) {
       setBackgroundImage(clearedBackgroundImage);
-      setCanvasWidth(clearedBackgroundImage.width);
-      setCanvasHeight(clearedBackgroundImage.height);
       setClearedBackgroundImage(null);
     }
   };
