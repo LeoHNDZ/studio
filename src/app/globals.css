@@ -91,10 +91,11 @@
         }
         body, html {
             background: white !important;
+            -webkit-print-color-adjust: exact;
         }
         .printable {
             display: block !important;
-            position: fixed;
+            position: absolute;
             top: 0;
             left: 0;
             width: 100vw;

@@ -153,24 +153,18 @@ export default function Home() {
   };
   
   const handlePrint = (withBackground = false) => {
-    if (!canvasRef.current) {
-        toast({ title: 'Error', description: 'Canvas not found.', variant: 'destructive' });
+    const canvas = canvasRef.current?.getCanvas(withBackground);
+    if (!canvas) {
+        toast({ title: 'Error', description: 'Could not generate print image.', variant: 'destructive' });
         return;
     }
 
     const currentSelectedId = selectedTextId;
     setSelectedTextId(null);
 
-    // Give React time to re-render without the selection box
     setTimeout(() => {
-        const canvas = canvasRef.current?.getCanvas(withBackground);
-        if (canvas) {
-            const dataUrl = canvas.toDataURL('image/png');
-            setPrintDataUrl(dataUrl);
-        } else {
-            toast({ title: 'Error', description: 'Could not generate print image.', variant: 'destructive' });
-        }
-        
+        const dataUrl = canvas.toDataURL('image/png');
+        setPrintDataUrl(dataUrl);
         setSelectedTextId(currentSelectedId);
     }, 100);
   };
