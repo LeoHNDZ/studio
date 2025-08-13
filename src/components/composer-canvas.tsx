@@ -10,6 +10,10 @@ interface ComposerCanvasProps {
   setTexts: React.Dispatch<React.SetStateAction<TextElement[]>>;
   selectedTextId: string | null;
   setSelectedTextId: (id: string | null) => void;
+  editingText: TextElement | null;
+  editingTextId: string | null;
+  setEditingTextId: (id: string | null) => void;
+  onUpdateText: (id: string, newProps: Partial<TextElement>) => void;
   canvasWidth: number;
   canvasHeight: number;
   pendingText: string | null;
@@ -29,7 +33,11 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
     texts, 
     setTexts, 
     selectedTextId, 
-    setSelectedTextId, 
+    setSelectedTextId,
+    editingText,
+    editingTextId,
+    setEditingTextId,
+    onUpdateText,
     canvasWidth, 
     canvasHeight,
     pendingText,
@@ -39,6 +47,7 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
     const internalCanvasRef = React.useRef<HTMLCanvasElement>(null);
     const containerRef = React.useRef<HTMLDivElement>(null);
     const hasInitialized = React.useRef(false);
+    const textareaRef = React.useRef<HTMLTextAreaElement>(null);
 
     const [draggingState, setDraggingState] = React.useState<{ id: string; offsetX: number; offsetY: number } | null>(null);
     
@@ -74,6 +83,8 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
         }
         
         texts.forEach((text) => {
+          if (text.id === editingTextId) return; // Don't draw text being edited
+
             ctx.font = `${text.fontSize}px ${text.fontFamily}`;
             ctx.fillStyle = text.color;
             ctx.textAlign = 'left';
@@ -95,7 +106,7 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
         });
 
         ctx.restore();
-    }, [backgroundImage, texts, selectedTextId, canvasWidth, canvasHeight]);
+    }, [backgroundImage, texts, selectedTextId, editingTextId, canvasWidth, canvasHeight]);
     
     const resetView = React.useCallback(() => {
         const container = containerRef.current;
@@ -212,6 +223,7 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
     };
 
     const handleMouseDown = (e: React.MouseEvent | React.TouchEvent) => {
+      if (editingTextId) return;
       if ('button' in e && e.button === 2) {
         // This is a right click, handled by onContextMenu
         return;
@@ -286,6 +298,50 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
         }
     }, [draggingState]);
 
+    const handleDoubleClick = (e: React.MouseEvent) => {
+      const { x, y } = getTransformedMousePos(e);
+      const ctx = internalCanvasRef.current?.getContext('2d');
+      if (!ctx) return;
+
+      let hit = null;
+      for (let i = texts.length - 1; i >= 0; i--) {
+        const text = texts[i];
+        ctx.font = `${text.fontSize}px ${text.fontFamily}`;
+        const metrics = ctx.measureText(text.text);
+        const width = metrics.width;
+        const height = text.fontSize;
+        if (x >= text.x && x <= text.x + width && y >= text.y && y <= text.y + height) {
+          hit = text.id;
+          break;
+        }
+      }
+      
+      if (hit) {
+        setEditingTextId(hit);
+        setSelectedTextId(hit);
+      }
+    };
+
+    const handleEditingFinish = () => {
+      setEditingTextId(null);
+    };
+
+    const handleTextareaKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        handleEditingFinish();
+        internalCanvasRef.current?.focus();
+      }
+    };
+
+    React.useEffect(() => {
+      if (editingTextId && textareaRef.current) {
+        textareaRef.current.focus();
+        textareaRef.current.select();
+      }
+    }, [editingTextId]);
+
+
     const handleWheel = React.useCallback((e: WheelEvent) => {
       e.preventDefault();
       const canvas = internalCanvasRef.current;
@@ -317,9 +373,10 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
 
     const handleContextMenu = React.useCallback((e: MouseEvent) => {
       e.preventDefault();
+      if(editingTextId) return;
       const { x, y } = getTransformedMousePos(e);
       onTextAdd('New Text', { x, y });
-    }, [onTextAdd]);
+    }, [onTextAdd, editingTextId]);
 
     React.useEffect(() => {
         redrawCanvas();
@@ -345,15 +402,52 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
     const getCursorStyle = () => {
       if (pendingText) return 'crosshair';
       if (viewStateRef.current.isPanning || draggingState) return 'grabbing';
-      if (selectedTextId) return 'pointer';
+      if (selectedTextId && !editingTextId) return 'pointer';
       return 'default';
     }
+
+    const calculateTextareaStyle = (): React.CSSProperties => {
+      if (!editingText) return { display: 'none' };
+      
+      const { scale, pan } = viewStateRef.current;
+      const canvas = internalCanvasRef.current;
+      if(!canvas) return { display: 'none' };
+
+      const rect = canvas.getBoundingClientRect();
+
+      const tempCtx = document.createElement('canvas').getContext('2d');
+      if(!tempCtx) return { display: 'none' };
+      tempCtx.font = `${editingText.fontSize * scale}px ${editingText.fontFamily}`;
+      const metrics = tempCtx.measureText(editingText.text);
+      const textWidth = metrics.width;
+      
+      return {
+        position: 'absolute',
+        top: `${rect.top + pan.y + (editingText.y * scale)}px`,
+        left: `${rect.left + pan.x + (editingText.x * scale)}px`,
+        width: `${textWidth + 20 * scale}px`,
+        height: 'auto',
+        minHeight: `${editingText.fontSize * scale * 1.2}px`,
+        background: 'rgba(255, 255, 255, 0.9)',
+        border: `1px solid hsl(var(--ring))`,
+        outline: 'none',
+        padding: '0',
+        margin: '0',
+        font: `${editingText.fontSize * scale}px ${editingText.fontFamily}`,
+        color: editingText.color,
+        transformOrigin: 'top left',
+        resize: 'none',
+        overflow: 'hidden',
+        lineHeight: '1.2',
+        whiteSpace: 'pre-wrap',
+        zIndex: 100,
+      };
+    };
 
     return (
       <div 
         ref={containerRef} 
-        className="w-full h-full rounded-lg bg-card shadow-inner overflow-hidden flex justify-center items-center"
-        style={{ cursor: getCursorStyle() }}
+        className="w-full h-full rounded-lg bg-card shadow-inner overflow-hidden flex justify-center items-center relative"
       >
         <canvas
           ref={internalCanvasRef}
@@ -362,14 +456,22 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
           onMouseLeave={handleMouseUp}
           onTouchStart={handleMouseDown}
           onTouchMove={handleMouseMove}
+          onDoubleClick={handleDoubleClick}
           className="touch-none"
           style={{ cursor: getCursorStyle() }}
         />
+        {editingTextId && editingText && (
+          <textarea
+            ref={textareaRef}
+            value={editingText.text}
+            onChange={(e) => onUpdateText(editingTextId, { text: e.target.value })}
+            onBlur={handleEditingFinish}
+            onKeyDown={handleTextareaKeyDown}
+            style={calculateTextareaStyle()}
+          />
+        )}
       </div>
     );
   }
 );
 ComposerCanvas.displayName = 'ComposerCanvas';
-
-    
-    

@@ -24,6 +24,7 @@ export default function Home() {
   const [clearedBackgroundImage, setClearedBackgroundImage] = React.useState<HTMLImageElement | null>(null);
   const [texts, setTexts] = React.useState<TextElement[]>([]);
   const [selectedTextId, setSelectedTextId] = React.useState<string | null>(null);
+  const [editingTextId, setEditingTextId] = React.useState<string | null>(null);
   const [contacts, setContacts] = React.useState<Contact[]>([]);
   const canvasRef = React.useRef<ComposerCanvasHandle>(null);
   const { toast } = useToast();
@@ -121,11 +122,18 @@ export default function Home() {
   const deleteText = (id: string) => {
     setTexts((prev) => prev.filter((t) => t.id !== id));
     setSelectedTextId(null);
+    if (editingTextId === id) {
+      setEditingTextId(null);
+    }
   }
 
   const selectedText = React.useMemo(() => {
     return texts.find((t) => t.id === selectedTextId) || null;
   }, [texts, selectedTextId]);
+
+  const editingText = React.useMemo(() => {
+    return texts.find((t) => t.id === editingTextId) || null;
+  }, [texts, editingTextId]);
 
   const handleExport = () => {
     const canvas = canvasRef.current?.getCanvas();
@@ -140,6 +148,7 @@ export default function Home() {
     
     const currentSelectedId = selectedTextId;
     setSelectedTextId(null);
+    setEditingTextId(null);
 
     setTimeout(() => {
       const dataUrl = canvas.toDataURL('image/png');
@@ -154,9 +163,8 @@ export default function Home() {
   
   const handlePrint = (withBackground = false) => {
     const wasSelected = selectedTextId;
-    if (wasSelected) {
-      setSelectedTextId(null);
-    }
+    setEditingTextId(null);
+    setSelectedTextId(null);
 
     setTimeout(() => {
       const canvas = canvasRef.current?.getCanvas(withBackground);
@@ -168,10 +176,13 @@ export default function Home() {
       
       const dataUrl = canvas.toDataURL('image/png');
       const iframe = document.createElement('iframe');
-      iframe.style.position = 'absolute';
+      iframe.style.position = 'fixed';
       iframe.style.width = '0';
       iframe.style.height = '0';
       iframe.style.border = 'none';
+      iframe.style.top = '-9999px';
+      iframe.style.left = '-9999px';
+
       document.body.appendChild(iframe);
   
       const iframeDoc = iframe.contentWindow?.document;
@@ -190,7 +201,7 @@ export default function Home() {
             <style>
               @page { size: letter; margin: 0; }
               body { margin: 0; }
-              img { width: 100%; height: 100%; object-fit: contain; }
+              img { width: 100%; height: auto; object-fit: contain; }
             </style>
           </head>
           <body>
@@ -203,11 +214,16 @@ export default function Home() {
       const printImage = iframe.contentWindow?.document.getElementById('print-image');
       
       const doPrint = () => {
-        iframe.contentWindow?.focus();
-        iframe.contentWindow?.print();
-        document.body.removeChild(iframe);
-        if (wasSelected) {
-          setSelectedTextId(wasSelected);
+        try {
+          iframe.contentWindow?.focus();
+          iframe.contentWindow?.print();
+        } catch(e) {
+           toast({ title: 'Error', description: 'Printing failed.', variant: 'destructive' });
+        } finally {
+            document.body.removeChild(iframe);
+            if (wasSelected) {
+              setSelectedTextId(wasSelected);
+            }
         }
       }
 
@@ -215,9 +231,8 @@ export default function Home() {
         printImage.onload = () => {
           doPrint();
         };
-        if (printImage.complete) {
-          doPrint();
-        }
+        // Fallback for when onload doesn't fire
+        setTimeout(doPrint, 500);
       } else {
         toast({ title: 'Error', description: 'Could not find print image in frame.', variant: 'destructive' });
         document.body.removeChild(iframe);
@@ -249,7 +264,7 @@ export default function Home() {
               hasClearedBackgroundImage={!!clearedBackgroundImage}
               contacts={contacts}
               onAddContact={addContact}
-              onDeleteContact={deleteContact}
+              onDeleteContact={deleteText}
               isAddingText={!!pendingText}
               onAddContactText={addText}
             />
@@ -286,6 +301,10 @@ export default function Home() {
                 setTexts={setTexts}
                 selectedTextId={selectedTextId}
                 setSelectedTextId={setSelectedTextId}
+                editingText={editingText}
+                editingTextId={editingTextId}
+                setEditingTextId={setEditingTextId}
+                onUpdateText={updateText}
                 canvasWidth={canvasWidth}
                 canvasHeight={canvasHeight}
                 pendingText={pendingText}
