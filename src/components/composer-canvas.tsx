@@ -51,12 +51,11 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
         const { scale, pan } = viewStateRef.current;
         const dpr = window.devicePixelRatio || 1;
 
-        if (canvas.width !== Math.floor(canvasWidth * dpr) || canvas.height !== Math.floor(canvasHeight * dpr)) {
-            canvas.width = Math.floor(canvasWidth * dpr);
-            canvas.height = Math.floor(canvasHeight * dpr);
-            canvas.style.width = `${canvasWidth}px`;
-            canvas.style.height = `${canvasHeight}px`;
-        }
+        canvas.width = Math.floor(canvasWidth * dpr);
+        canvas.height = Math.floor(canvasHeight * dpr);
+        canvas.style.width = `${canvasWidth}px`;
+        canvas.style.height = `${canvasHeight}px`;
+        
         ctx.scale(dpr,dpr);
 
         ctx.save();
@@ -133,17 +132,19 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
         const container = containerRef.current;
         if (!container) return;
         const resizeObserver = new ResizeObserver(() => {
-           redrawCanvas();
+           resetView();
         });
         resizeObserver.observe(container);
         return () => {
             resizeObserver.disconnect();
         };
-    }, [redrawCanvas]);
-
-    React.useEffect(() => {
-        resetView();
     }, [resetView]);
+    
+    React.useEffect(() => {
+        if(backgroundImage) {
+            resetView();
+        }
+    }, [backgroundImage, resetView]);
 
     React.useEffect(() => {
       redrawCanvas();

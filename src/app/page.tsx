@@ -18,9 +18,6 @@ import { nanoid } from 'nanoid';
 import { useToast } from '@/hooks/use-toast';
 
 const DEFAULT_IMAGE_URL = '/Ticket.png';
-const DEFAULT_CANVAS_WIDTH = 800;
-const DEFAULT_CANVAS_HEIGHT = 600;
-
 
 export default function Home() {
   const [backgroundImage, setBackgroundImage] = React.useState<HTMLImageElement | null>(null);
@@ -31,8 +28,8 @@ export default function Home() {
   const canvasRef = React.useRef<ComposerCanvasHandle>(null);
   const { toast } = useToast();
 
-  const [canvasWidth, setCanvasWidth] = React.useState<number>(DEFAULT_CANVAS_WIDTH);
-  const [canvasHeight, setCanvasHeight] = React.useState<number>(DEFAULT_CANVAS_HEIGHT);
+  const [canvasWidth, setCanvasWidth] = React.useState<number>(800);
+  const [canvasHeight, setCanvasHeight] = React.useState<number>(600);
   
   React.useEffect(() => {
     const img = new Image();
@@ -80,14 +77,10 @@ export default function Home() {
         setClearedBackgroundImage(backgroundImage);
     }
     setBackgroundImage(null);
-    setCanvasWidth(DEFAULT_CANVAS_WIDTH);
-    setCanvasHeight(DEFAULT_CANVAS_HEIGHT);
   };
 
   const restoreBackgroundImage = () => {
     if (clearedBackgroundImage) {
-      setCanvasWidth(clearedBackgroundImage.width);
-      setCanvasHeight(clearedBackgroundImage.height);
       setBackgroundImage(clearedBackgroundImage);
       setClearedBackgroundImage(null);
     }
