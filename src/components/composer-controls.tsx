@@ -22,7 +22,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, RotateCcw, Trash2, X, UserPlus, BookUser } from 'lucide-react';
+import { Plus, RotateCcw, Trash2, X, UserPlus, BookUser, Check } from 'lucide-react';
 import { Card, CardContent } from './ui/card';
 import { ScrollArea } from './ui/scroll-area';
 
@@ -90,9 +90,14 @@ export function ComposerControls({
       <AccordionItem value="item-2">
         <AccordionTrigger className="px-4">Text Elements</AccordionTrigger>
         <AccordionContent className="px-4 space-y-4">
-          <Button className="w-full" onClick={() => onAddText('New Text')} disabled={isAddingText}>
-            <Plus className="mr-2 h-4 w-4" /> {isAddingText ? 'Click on canvas to place...' : 'Add Text'}
-          </Button>
+          <div className="grid grid-cols-2 gap-2">
+            <Button className="w-full" onClick={() => onAddText('New Text')} disabled={isAddingText}>
+              <Plus className="mr-2 h-4 w-4" /> {isAddingText ? 'Place Text...' : 'Add Text'}
+            </Button>
+             <Button className="w-full" onClick={() => onAddText('✔')} disabled={isAddingText}>
+              <Check className="mr-2 h-4 w-4" /> {isAddingText ? 'Place Mark...' : 'Add Check'}
+            </Button>
+          </div>
           {selectedText ? (
             <Card>
               <CardContent className="pt-4 space-y-4">
@@ -130,7 +135,7 @@ export function ComposerControls({
             </Card>
           ) : (
             <p className="text-sm text-muted-foreground text-center p-4">
-              {isAddingText ? 'Click on the canvas to place your text.' : 'Select a text element to edit its properties.'}
+              {isAddingText ? 'Click on the canvas to place your element.' : 'Select a text element to edit its properties.'}
             </p>
           )}
         </AccordionContent>

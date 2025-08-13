@@ -164,8 +164,8 @@ export default function Home() {
   
   const handlePrint = (withBackground = false) => {
     const wasSelected = selectedTextId;
-    setEditingTextId(null);
     setSelectedTextId(null);
+    setEditingTextId(null);
   
     setTimeout(() => {
       const canvas = canvasRef.current?.getCanvas(withBackground);
@@ -194,7 +194,7 @@ export default function Home() {
         return;
       }
 
-      iframe.onload = () => {
+      const doPrint = () => {
         try {
           iframe.contentWindow?.focus();
           iframe.contentWindow?.print();
@@ -222,11 +222,14 @@ export default function Home() {
             </style>
           </head>
           <body>
-            <img src="${dataUrl}" />
+            <img src="${dataUrl}" onload="window.print()" />
           </body>
         </html>
       `);
       iframeDoc.close();
+
+      // Fallback in case onload doesn't fire
+      setTimeout(doPrint, 500);
   
     }, 100);
   };
