@@ -28,8 +28,8 @@ export default function Home() {
   const canvasRef = React.useRef<ComposerCanvasHandle>(null);
   const { toast } = useToast();
 
-  const [canvasWidth, setCanvasWidth] = React.useState<number>(800);
-  const [canvasHeight, setCanvasHeight] = React.useState<number>(600);
+  const [canvasWidth, setCanvasWidth] = React.useState<number>(0);
+  const [canvasHeight, setCanvasHeight] = React.useState<number>(0);
   
   React.useEffect(() => {
     const img = new Image();
@@ -171,7 +171,7 @@ export default function Home() {
             printWindow.document.write(`
                 <html>
                     <head><title>Print</title></head>
-                    <body style="margin: 0;"><img src="${dataUrl}"></body>
+                    <body><div id="print-container"><img src="${dataUrl}"></div></body>
                 </html>
             `);
         } else {
@@ -201,7 +201,7 @@ export default function Home() {
             printWindow.document.write(`
                 <html>
                     <head><title>Print</title></head>
-                    <body style="margin: 0;"><img src="${textOnlyDataUrl}"></body>
+                    <body><div id="print-container"><img src="${textOnlyDataUrl}"></div></body>
                 </html>
             `);
         }
@@ -265,7 +265,7 @@ export default function Home() {
               </Button>
             </div>
           </header>
-          <main className="flex-1 p-4 overflow-auto">
+          <main className="flex-1 p-4 overflow-hidden">
             <ComposerCanvas
               ref={canvasRef}
               backgroundImage={backgroundImage}

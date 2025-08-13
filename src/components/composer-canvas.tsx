@@ -49,17 +49,19 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
         if (!ctx) return;
 
         const { scale, pan } = viewStateRef.current;
+        
+        // Use device pixel ratio for sharper rendering on high-DPI screens
         const dpr = window.devicePixelRatio || 1;
-
         canvas.width = Math.floor(canvasWidth * dpr);
         canvas.height = Math.floor(canvasHeight * dpr);
         canvas.style.width = `${canvasWidth}px`;
         canvas.style.height = `${canvasHeight}px`;
-        
-        ctx.scale(dpr,dpr);
+
+        ctx.scale(dpr, dpr);
 
         ctx.save();
         ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+        
         ctx.translate(pan.x, pan.y);
         ctx.scale(scale, scale);
 
@@ -127,24 +129,22 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
         getCanvas: () => internalCanvasRef.current,
         resetView,
      }));
-
+    
     React.useEffect(() => {
         const container = containerRef.current;
-        if (!container) return;
+        if (!container || !canvasWidth || !canvasHeight) return;
+
         const resizeObserver = new ResizeObserver(() => {
            resetView();
         });
         resizeObserver.observe(container);
+        
+        resetView();
+
         return () => {
             resizeObserver.disconnect();
         };
-    }, [resetView]);
-    
-    React.useEffect(() => {
-        if(backgroundImage) {
-            resetView();
-        }
-    }, [backgroundImage, resetView]);
+    }, [canvasWidth, canvasHeight, resetView]);
 
     React.useEffect(() => {
       redrawCanvas();
@@ -157,14 +157,15 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
       
       const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
       const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
-
-      const canvasX = (clientX - rect.left);
-      const canvasY = (clientY - rect.top);
+      
+      const dpr = window.devicePixelRatio || 1;
+      const canvasX = (clientX - rect.left) * dpr;
+      const canvasY = (clientY - rect.top) * dpr;
       
       const { scale, pan } = viewStateRef.current;
       
-      const transformedX = (canvasX - pan.x) / scale;
-      const transformedY = (canvasY - pan.y) / scale;
+      const transformedX = (canvasX - (pan.x * dpr)) / (scale * dpr);
+      const transformedY = (canvasY - (pan.y * dpr)) / (scale * dpr);
 
       
       return { x: transformedX, y: transformedY, clientX, clientY };
@@ -194,7 +195,7 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
       if (!hit) {
         setSelectedTextId(null);
         // Middle mouse button for panning
-        if (e.nativeEvent instanceof MouseEvent && (e.nativeEvent.button === 1)) { 
+        if (e.nativeEvent instanceof MouseEvent && (e.nativeEvent.button === 1 || e.nativeEvent.buttons === 4)) { 
              e.preventDefault();
              viewStateRef.current.isPanning = true;
              viewStateRef.current.panStart = { x: clientX, y: clientY };
@@ -209,8 +210,10 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
         const { panStart, pan } = viewStateRef.current;
         const dx = clientX - panStart.x;
         const dy = clientY - panStart.y;
-        viewStateRef.current.pan.x = pan.x + dx;
-        viewStateRef.current.pan.y = pan.y + dy;
+        
+        const dpr = window.devicePixelRatio || 1;
+        viewStateRef.current.pan.x = pan.x + (dx/dpr);
+        viewStateRef.current.pan.y = pan.y + (dy/dpr);
         viewStateRef.current.panStart = { x: clientX, y: clientY };
         redrawCanvas();
         return;
@@ -242,31 +245,33 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
       if (!canvas) return;
 
       const rect = canvas.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
       
       const clientX = e.clientX;
       const clientY = e.clientY;
 
-      const canvasX = (clientX - rect.left);
-      const canvasY = (clientY - rect.top);
+      const canvasX = (clientX - rect.left) * dpr;
+      const canvasY = (clientY - rect.top) * dpr;
       
-      const mouseX = (canvasX - viewStateRef.current.pan.x) / viewStateRef.current.scale;
-      const mouseY = (canvasY - viewStateRef.current.pan.y) / viewStateRef.current.scale;
+      const mouseX = (canvasX - viewStateRef.current.pan.x * dpr) / (viewStateRef.current.scale * dpr);
+      const mouseY = (canvasY - viewStateRef.current.pan.y * dpr) / (viewStateRef.current.scale * dpr);
 
       if (e.ctrlKey || e.metaKey || e.shiftKey) { // Zoom
         const zoomFactor = 1.1;
         const { scale } = viewStateRef.current;
         const newScale = e.deltaY < 0 ? scale * zoomFactor : scale / zoomFactor;
         
-        const newPanX = viewStateRef.current.pan.x - (mouseX * (newScale - scale));
-        const newPanY = viewStateRef.current.pan.y - (mouseY * (newScale - scale));
+        const newPanX = viewStateRef.current.pan.x - (mouseX * (newScale - scale) / dpr);
+        const newPanY = viewStateRef.current.pan.y - (mouseY * (newScale - scale) / dpr);
 
 
         viewStateRef.current.scale = newScale;
         viewStateRef.current.pan = {x: newPanX, y: newPanY};
       } else { // Pan
         const { pan } = viewStateRef.current;
-        viewStateRef.current.pan.x = pan.x - e.deltaX;
-        viewStateRef.current.pan.y = pan.y - e.deltaY;
+        const PAN_SENSITIVITY = 1.5;
+        viewStateRef.current.pan.x = pan.x - (e.deltaX * PAN_SENSITIVITY / dpr);
+        viewStateRef.current.pan.y = pan.y - (e.deltaY * PAN_SENSITIVITY / dpr);
       }
       
       redrawCanvas();
