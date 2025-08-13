@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from 'react';
@@ -8,6 +9,15 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogFooter,
+  DialogClose,
+} from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -45,12 +55,14 @@ export function ComposerControls({
 }: ComposerControlsProps) {
   const [newContactName, setNewContactName] = React.useState('');
   const [newContactDetails, setNewContactDetails] = React.useState('');
+  const [isContactDialogOpen, setIsContactDialogOpen] = React.useState(false);
 
   const handleAddContact = () => {
     if (newContactName.trim() && newContactDetails.trim()) {
       onAddContact(newContactName.trim(), newContactDetails.trim());
       setNewContactName('');
       setNewContactDetails('');
+      setIsContactDialogOpen(false);
     }
   };
 
@@ -120,31 +132,45 @@ export function ComposerControls({
       <AccordionItem value="item-3">
         <AccordionTrigger className="px-4">Contacts</AccordionTrigger>
         <AccordionContent className="px-4 space-y-4">
-          <Card>
-            <CardContent className="pt-4 space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="new-contact-name">Name</Label>
-                <Input 
-                  id="new-contact-name"
-                  placeholder="John Doe"
-                  value={newContactName}
-                  onChange={(e) => setNewContactName(e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="new-contact-details">Details</Label>
-                <Textarea 
-                  id="new-contact-details"
-                  placeholder="123 Main St..."
-                  value={newContactDetails}
-                  onChange={(e) => setNewContactDetails(e.target.value)}
-                />
-              </div>
-              <Button className="w-full" onClick={handleAddContact}>
+          <Dialog open={isContactDialogOpen} onOpenChange={setIsContactDialogOpen}>
+            <DialogTrigger asChild>
+              <Button className="w-full">
                 <UserPlus className="mr-2 h-4 w-4" /> Add Contact
               </Button>
-            </CardContent>
-          </Card>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Add a new contact</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="new-contact-name">Name</Label>
+                  <Input 
+                    id="new-contact-name"
+                    placeholder="John Doe"
+                    value={newContactName}
+                    onChange={(e) => setNewContactName(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="new-contact-details">Details</Label>
+                  <Textarea 
+                    id="new-contact-details"
+                    placeholder="123 Main St..."
+                    value={newContactDetails}
+                    onChange={(e) => setNewContactDetails(e.target.value)}
+                  />
+                </div>
+              </div>
+              <DialogFooter>
+                  <DialogClose asChild>
+                    <Button variant="ghost">Cancel</Button>
+                  </DialogClose>
+                  <Button onClick={handleAddContact}>Save Contact</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
           <Card>
              <CardContent className="pt-4">
               <h3 className="text-sm font-medium mb-2 flex items-center"><BookUser className="mr-2 h-4 w-4" />Saved Contacts</h3>
