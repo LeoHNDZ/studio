@@ -50,11 +50,8 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
 
         const { scale, pan } = viewStateRef.current;
         
-        const dpr = window.devicePixelRatio || 1;
-        canvas.width = Math.floor(containerRef.current.clientWidth * dpr);
-        canvas.height = Math.floor(containerRef.current.clientHeight * dpr);
-        canvas.style.width = `${containerRef.current.clientWidth}px`;
-        canvas.style.height = `${containerRef.current.clientHeight}px`;
+        canvas.width = containerRef.current.clientWidth;
+        canvas.height = containerRef.current.clientHeight;
         
         ctx.save();
         ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -149,24 +146,40 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
         if (!container) return;
 
         const resizeObserver = new ResizeObserver(() => {
-           resetView();
+           redrawCanvas();
         });
         resizeObserver.observe(container);
         
         return () => {
             resizeObserver.disconnect();
         };
-    }, [resetView]);
+    }, [redrawCanvas]);
 
     React.useEffect(() => {
-      if (canvasWidth > 0 && canvasHeight > 0) {
-        resetView();
-      }
-    }, [canvasWidth, canvasHeight, resetView]);
+        if (canvasWidth > 0 && canvasHeight > 0) {
+            const container = containerRef.current;
+            if (!container) return;
 
-    React.useEffect(() => {
-      redrawCanvas();
-    }, [texts, selectedTextId, redrawCanvas]);
+            const containerWidth = container.clientWidth;
+            const containerHeight = container.clientHeight;
+
+            const scaleX = containerWidth / canvasWidth;
+            const scaleY = containerHeight / canvasHeight;
+            const scale = Math.min(scaleX, scaleY) * 0.95;
+
+            const panX = (containerWidth - (canvasWidth * scale)) / 2;
+            const panY = (containerHeight - (canvasHeight * scale)) / 2;
+
+            viewStateRef.current = {
+                scale: scale,
+                pan: { x: panX, y: panY },
+                isPanning: false,
+                panStart: { x: 0, y: 0 },
+            };
+        }
+        redrawCanvas();
+    }, [canvasWidth, canvasHeight, redrawCanvas]);
+
 
     const getTransformedMousePos = (e: React.MouseEvent | React.TouchEvent | React.WheelEvent) => {
       const canvas = internalCanvasRef.current;
@@ -209,10 +222,10 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
       }
       if (!hit) {
         setSelectedTextId(null);
-        if ((e.nativeEvent instanceof MouseEvent && e.nativeEvent.button !== 0) || e.nativeEvent.type === 'touchstart') { 
+        if ((e.nativeEvent instanceof MouseEvent && (e.nativeEvent.button === 1 || e.nativeEvent.button === 2)) || e.nativeEvent.type === 'touchstart') { 
              e.preventDefault();
              viewStateRef.current.isPanning = true;
-             viewStateRef.current.panStart = { x: clientX, y: clientY };
+             viewStateRef.current.panStart = { x: clientX - viewStateRef.current.pan.x, y: clientY - viewStateRef.current.pan.y };
         }
       }
     };
@@ -221,13 +234,10 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
       const { x, y, clientX, clientY } = getTransformedMousePos(e);
 
       if (viewStateRef.current.isPanning) {
-        const { panStart } = viewStateRef.current;
-        const dx = clientX - panStart.x;
-        const dy = clientY - panStart.y;
-        
-        viewStateRef.current.pan.x += dx;
-        viewStateRef.current.pan.y += dy;
-        viewStateRef.current.panStart = { x: clientX, y: clientY };
+        viewStateRef.current.pan = {
+          x: clientX - viewStateRef.current.panStart.x,
+          y: clientY - viewStateRef.current.panStart.y,
+        };
         redrawCanvas();
         return;
       }
@@ -284,11 +294,14 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
     React.useEffect(() => {
         const canvas = internalCanvasRef.current;
         if (!canvas) return;
-
+        
+        const handleContextMenu = (e: MouseEvent) => e.preventDefault();
+        canvas.addEventListener('contextmenu', handleContextMenu);
         canvas.addEventListener('wheel', handleWheel, { passive: false });
         window.addEventListener('mouseup', handleMouseUp);
         
         return () => {
+            canvas.removeEventListener('contextmenu', handleContextMenu);
             canvas.removeEventListener('wheel', handleWheel);
             window.removeEventListener('mouseup', handleMouseUp);
         }
