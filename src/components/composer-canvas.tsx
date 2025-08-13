@@ -91,14 +91,9 @@ export const ComposerCanvas = React.forwardRef<HTMLCanvasElement, ComposerCanvas
         const container = containerRef.current;
         if (!container || !canvas) return;
 
-        const resizeObserver = new ResizeObserver(entries => {
+        const resizeObserver = new ResizeObserver(() => {
             if (!backgroundImage) {
-                for (let entry of entries) {
-                    const { width, height } = entry.contentRect;
-                    canvas.style.width = `${width}px`;
-                    canvas.style.height = `${height}px`;
-                    redrawCanvas();
-                }
+                redrawCanvas();
             }
         });
 
