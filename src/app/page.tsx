@@ -17,7 +17,7 @@ import { Download, Printer, TextQuoteIcon, Image as ImageIcon } from 'lucide-rea
 import { nanoid } from 'nanoid';
 import { useToast } from '@/hooks/use-toast';
 
-const DEFAULT_IMAGE_URL = '/sunshine_windows_form.jpg';
+const DEFAULT_IMAGE_URL = '/Ticket.png';
 
 export default function Home() {
   const [backgroundImage, setBackgroundImage] = React.useState<HTMLImageElement | null>(null);
@@ -158,7 +158,6 @@ export default function Home() {
         return;
     }
     
-    // Set a white background for printing text only, otherwise use the image
     if (withBackground && backgroundImage) {
       ctx.drawImage(backgroundImage, 0, 0, printCanvas.width, printCanvas.height);
     } else {
@@ -192,7 +191,7 @@ export default function Home() {
                 <title>Print</title>
                 <style>
                     @page {
-                        size: ${printCanvas.width}px ${printCanvas.height}px;
+                        size: auto;
                         margin: 0;
                     }
                     body {
