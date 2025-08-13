@@ -183,42 +183,18 @@ export default function Home() {
       iframe.style.border = 'none';
       iframe.style.top = '-9999px';
       iframe.style.left = '-9999px';
-  
+      
       document.body.appendChild(iframe);
   
       const iframeDoc = iframe.contentWindow?.document;
       if (!iframeDoc) {
         toast({ title: 'Error', description: 'Could not create print frame.', variant: 'destructive' });
         if (wasSelected) setSelectedTextId(wasSelected);
-        document.body.removeChild(iframe);
+        if(iframe.parentElement) document.body.removeChild(iframe);
         return;
       }
-  
-      iframeDoc.open();
-      iframeDoc.write(`
-        <html>
-          <head>
-            <title>Print</title>
-            <style>
-              @page { size: letter; margin: 0; }
-              body { margin: 0; }
-              img { width: 100%; height: auto; object-fit: contain; }
-            </style>
-          </head>
-          <body>
-            <img id="print-image" src="${dataUrl}" />
-          </body>
-        </html>
-      `);
-      iframeDoc.close();
-  
-      const printImage = iframe.contentWindow?.document.getElementById('print-image') as HTMLImageElement;
-      
-      let printTriggered = false;
-      const doPrint = () => {
-        if (printTriggered) return;
-        printTriggered = true;
 
+      iframe.onload = () => {
         try {
           iframe.contentWindow?.focus();
           iframe.contentWindow?.print();
@@ -232,17 +208,26 @@ export default function Home() {
               setSelectedTextId(wasSelected);
             }
         }
-      }
+      };
   
-      if (printImage) {
-        printImage.onload = doPrint;
-        // Fallback for browsers that might not fire onload for data URIs consistently
-        setTimeout(doPrint, 500); 
-      } else {
-        toast({ title: 'Error', description: 'Could not find print image in frame.', variant: 'destructive' });
-        document.body.removeChild(iframe);
-        if (wasSelected) setSelectedTextId(wasSelected);
-      }
+      iframeDoc.open();
+      iframeDoc.write(`
+        <html>
+          <head>
+            <title>Print</title>
+            <style>
+              @page { size: letter; margin: 0; }
+              body { margin: 0; padding: 0; }
+              img { width: 100%; height: auto; object-fit: contain; }
+            </style>
+          </head>
+          <body>
+            <img src="${dataUrl}" />
+          </body>
+        </html>
+      `);
+      iframeDoc.close();
+  
     }, 100);
   };
 
@@ -269,7 +254,7 @@ export default function Home() {
               hasClearedBackgroundImage={!!clearedBackgroundImage}
               contacts={contacts}
               onAddContact={addContact}
-              onDeleteContact={deleteText}
+              onDeleteContact={deleteContact}
               isAddingText={!!pendingText}
               onAddContactText={addText}
             />
@@ -323,5 +308,3 @@ export default function Home() {
     </>
   );
 }
-
-    
