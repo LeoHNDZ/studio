@@ -45,8 +45,12 @@ export default function Home() {
 
   React.useEffect(() => {
     if (printDataUrl) {
+      const handleAfterPrint = () => {
+        setPrintDataUrl(null);
+        window.removeEventListener('afterprint', handleAfterPrint);
+      };
+      window.addEventListener('afterprint', handleAfterPrint);
       window.print();
-      setPrintDataUrl(null); 
     }
   }, [printDataUrl]);
 
@@ -158,14 +162,21 @@ export default function Home() {
         toast({ title: 'Error', description: 'Could not generate print image.', variant: 'destructive' });
         return;
     }
+    
+    const wasSelected = selectedTextId;
+    if (wasSelected) {
+      setSelectedTextId(null);
+    }
 
-    const currentSelectedId = selectedTextId;
-    setSelectedTextId(null);
-
+    // Use a short timeout to allow React to re-render with the deselected text
     setTimeout(() => {
-        const dataUrl = canvas.toDataURL('image/png');
-        setPrintDataUrl(dataUrl);
-        setSelectedTextId(currentSelectedId);
+      const dataUrl = canvas.toDataURL('image/png');
+      setPrintDataUrl(dataUrl);
+
+      // Restore selection if there was one, but it won't affect the printout
+      if (wasSelected) {
+        setSelectedTextId(wasSelected);
+      }
     }, 100);
   };
 
