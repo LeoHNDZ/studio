@@ -158,7 +158,7 @@ export function ComposerControls({
                            <p className="text-muted-foreground text-xs whitespace-pre-wrap">{contact.details}</p>
                         </div>
                         <div className='flex gap-1'>
-                            <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => onAddText(contact.details)}>
+                            <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => onAddText(`${contact.name}\n${contact.details}`)}>
                                 <Plus className="h-4 w-4" />
                             </Button>
                             <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => onDeleteContact(contact.id)}>
