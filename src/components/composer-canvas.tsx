@@ -106,18 +106,16 @@ export const ComposerCanvas = React.forwardRef<HTMLCanvasElement, ComposerCanvas
         resizeObserver.disconnect();
       };
     }, [redrawCanvas]);
-
+    
     React.useEffect(() => {
-        if(backgroundImage) {
-            viewStateRef.current = {
-                scale: 1,
-                pan: { x: 0, y: 0 },
-                isPanning: false,
-                panStart: { x: 0, y: 0 },
-            };
-        }
+        viewStateRef.current = {
+            scale: 1,
+            pan: { x: 0, y: 0 },
+            isPanning: false,
+            panStart: { x: 0, y: 0 },
+        };
         redrawCanvas();
-    }, [backgroundImage, redrawCanvas]);
+    }, [backgroundImage]);
 
     React.useEffect(() => {
       redrawCanvas();
