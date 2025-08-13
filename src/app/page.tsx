@@ -122,7 +122,9 @@ export default function Home() {
 
   const deleteText = (id: string) => {
     setTexts((prev) => prev.filter((t) => t.id !== id));
-    setSelectedTextId(null);
+    if (selectedTextId === id) {
+      setSelectedTextId(null);
+    }
     if (editingTextId === id) {
       setEditingTextId(null);
     }
@@ -298,6 +300,7 @@ export default function Home() {
                 editingTextId={editingTextId}
                 setEditingTextId={setEditingTextId}
                 onUpdateText={updateText}
+                onDeleteText={deleteText}
                 canvasWidth={canvasWidth}
                 canvasHeight={canvasHeight}
                 pendingText={pendingText}

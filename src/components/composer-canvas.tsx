@@ -14,6 +14,7 @@ interface ComposerCanvasProps {
   editingTextId: string | null;
   setEditingTextId: (id: string | null) => void;
   onUpdateText: (id: string, newProps: Partial<TextElement>) => void;
+  onDeleteText: (id: string) => void;
   canvasWidth: number;
   canvasHeight: number;
   pendingText: string | null;
@@ -26,6 +27,8 @@ export interface ComposerCanvasHandle {
   resetView: () => void;
 }
 
+const DELETE_ICON_SIZE = 20; // in canvas pixels
+const DELETE_ICON_PADDING = 5; // in canvas pixels
 
 export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCanvasProps>(
   ({ 
@@ -38,6 +41,7 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
     editingTextId,
     setEditingTextId,
     onUpdateText,
+    onDeleteText,
     canvasWidth, 
     canvasHeight,
     pendingText,
@@ -97,11 +101,38 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
                 const width = metrics.width;
                 const height = text.fontSize;
 
+                // Bounding box
                 ctx.strokeStyle = 'hsl(var(--ring))';
                 ctx.lineWidth = 2 / scale;
                 ctx.setLineDash([6 / scale, 3 / scale]);
                 ctx.strokeRect(text.x - 4 / scale, text.y - 4 / scale, width + 8 / scale, height + 8 / scale);
                 ctx.setLineDash([]);
+                
+                // Delete Icon
+                const iconSize = DELETE_ICON_SIZE / scale;
+                const padding = DELETE_ICON_PADDING / scale;
+                const iconX = text.x + width + padding + 4 / scale;
+                const iconY = text.y - padding - 4 / scale;
+
+                // Circle background
+                ctx.beginPath();
+                ctx.arc(iconX + iconSize / 2, iconY + iconSize / 2, iconSize / 2, 0, 2 * Math.PI);
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+                ctx.fill();
+                ctx.strokeStyle = 'hsl(var(--destructive))';
+                ctx.lineWidth = 1.5 / scale;
+                ctx.stroke();
+
+                // "X" mark
+                ctx.beginPath();
+                const crossOffset = iconSize * 0.3;
+                ctx.moveTo(iconX + crossOffset, iconY + crossOffset);
+                ctx.lineTo(iconX + iconSize - crossOffset, iconY + iconSize - crossOffset);
+                ctx.moveTo(iconX + iconSize - crossOffset, iconY + crossOffset);
+                ctx.lineTo(iconX + crossOffset, iconY + iconSize - crossOffset);
+                ctx.strokeStyle = 'hsl(var(--destructive))';
+                ctx.lineWidth = 2 / scale;
+                ctx.stroke();
             }
         });
 
@@ -233,6 +264,27 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
       const ctx = internalCanvasRef.current?.getContext('2d');
       if (!ctx) return;
       
+      // Check if delete icon was clicked
+      if (selectedTextId) {
+        const selected = texts.find(t => t.id === selectedTextId);
+        if (selected) {
+          ctx.font = `${selected.fontSize}px ${selected.fontFamily}`;
+          const metrics = ctx.measureText(selected.text);
+          const width = metrics.width;
+          const { scale } = viewStateRef.current;
+          
+          const iconSize = DELETE_ICON_SIZE / scale;
+          const padding = DELETE_ICON_PADDING / scale;
+          const iconX = selected.x + width + padding + 4 / scale;
+          const iconY = selected.y - padding - 4 / scale;
+
+          if (x >= iconX && x <= iconX + iconSize && y >= iconY && y <= iconY + iconSize) {
+            onDeleteText(selectedTextId);
+            return;
+          }
+        }
+      }
+
       if (pendingText) {
         onTextAdd(pendingText, { x, y });
         onCompleteAddText();
@@ -402,7 +454,7 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
     const getCursorStyle = () => {
       if (pendingText) return 'crosshair';
       if (viewStateRef.current.isPanning || draggingState) return 'grabbing';
-      if (selectedTextId && !editingTextId) return 'pointer';
+      // Add cursor change for delete icon hover
       return 'default';
     }
 
