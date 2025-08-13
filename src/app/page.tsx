@@ -187,39 +187,62 @@ export default function Home() {
       iframe.style.top = '-9999px';
       iframe.style.left = '-9999px';
       
-      const html = `
+      document.body.appendChild(iframe);
+      
+      const doc = iframe.contentWindow?.document;
+      if (!doc) {
+        toast({ title: 'Error', description: 'Could not generate print document.', variant: 'destructive' });
+        if (wasSelected) setSelectedTextId(wasSelected);
+        document.body.removeChild(iframe);
+        return;
+      }
+
+      doc.open();
+      doc.write(`
         <html>
           <head>
             <title>Print</title>
             <style>
               @page { size: auto; margin: 0; }
-              body { margin: 0; padding: 0; }
-              img { width: 100%; height: auto; object-fit: contain; }
+              body { margin: 0; padding: 0; display: flex; justify-content: center; align-items: center; }
+              img { max-width: 100%; max-height: 100vh; object-fit: contain; }
             </style>
           </head>
           <body>
             <img src="${dataUrl}" />
           </body>
         </html>
-      `;
-  
-      document.body.appendChild(iframe);
-      
-      iframe.srcdoc = html;
+      `);
+      doc.close();
 
-      iframe.onload = () => {
+      const img = doc.querySelector('img');
+      let printed = false;
+      
+      const doPrint = () => {
+        if (printed) return;
         try {
           iframe.contentWindow?.focus();
           iframe.contentWindow?.print();
         } catch(e) {
            toast({ title: 'Error', description: 'Printing failed.', variant: 'destructive' });
         } finally {
-            document.body.removeChild(iframe);
+            if(document.body.contains(iframe)){
+              document.body.removeChild(iframe);
+            }
             if (wasSelected) {
               setSelectedTextId(wasSelected);
             }
+            printed = true;
         }
       };
+
+      if (img) {
+          img.onload = doPrint;
+          // Fallback if onload doesn't fire
+          setTimeout(doPrint, 1000);
+      } else {
+        doPrint();
+      }
     }, 100);
   };
 
@@ -301,5 +324,3 @@ export default function Home() {
     </>
   );
 }
-
-    
