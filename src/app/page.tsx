@@ -45,10 +45,7 @@ export default function Home() {
 
   React.useEffect(() => {
     if (printDataUrl) {
-      const printable = document.querySelector('.printable');
-      if (printable) {
-        window.print();
-      }
+      window.print();
       setPrintDataUrl(null); 
     }
   }, [printDataUrl]);
@@ -156,47 +153,30 @@ export default function Home() {
   };
   
   const handlePrint = (withBackground = false) => {
-    const canvas = canvasRef.current?.getCanvas();
-    if (!canvas) {
+    if (!canvasRef.current) {
         toast({ title: 'Error', description: 'Canvas not found.', variant: 'destructive' });
         return;
     }
-    
+
+    // Temporarily deselect text to avoid printing the selection box
     const currentSelectedId = selectedTextId;
     setSelectedTextId(null);
 
+    // Give React time to re-render without the selection box
     setTimeout(() => {
-        let dataUrl;
-        const printCanvas = document.createElement('canvas');
-        printCanvas.width = canvas.width;
-        printCanvas.height = canvas.height;
-        const ctx = printCanvas.getContext('2d');
-        if (!ctx) {
-            toast({ title: 'Error', description: 'Could not create print context.', variant: 'destructive' });
-            setSelectedTextId(currentSelectedId);
-            return;
-        }
-
-        if (withBackground && backgroundImage) {
-            ctx.drawImage(backgroundImage, 0, 0, printCanvas.width, printCanvas.height);
+        const canvas = canvasRef.current?.getCanvas(withBackground);
+        if (canvas) {
+            const dataUrl = canvas.toDataURL('image/png');
+            setPrintDataUrl(dataUrl);
         } else {
-            ctx.fillStyle = 'white';
-            ctx.fillRect(0, 0, printCanvas.width, printCanvas.height);
+            toast({ title: 'Error', description: 'Could not generate print image.', variant: 'destructive' });
         }
         
-        texts.forEach(text => {
-            ctx.font = `${text.fontSize}px ${text.fontFamily}`;
-            ctx.fillStyle = text.color;
-            ctx.textAlign = 'left';
-            ctx.textBaseline = 'top';
-            ctx.fillText(text.text, text.x, text.y);
-        });
-        
-        dataUrl = printCanvas.toDataURL('image/png');
-        setPrintDataUrl(dataUrl);
+        // Restore selection after printing is triggered
         setSelectedTextId(currentSelectedId);
     }, 100);
   };
+
 
   return (
     <>

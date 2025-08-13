@@ -14,7 +14,7 @@ interface ComposerCanvasProps {
 }
 
 export interface ComposerCanvasHandle {
-  getCanvas: () => HTMLCanvasElement | null;
+  getCanvas: (withBackground?: boolean) => HTMLCanvasElement | null;
   resetView: () => void;
 }
 
@@ -109,9 +109,8 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
     }, [canvasWidth, canvasHeight, redrawCanvas]);
 
      React.useImperativeHandle(ref, () => ({
-        getCanvas: () => {
-          const canvas = internalCanvasRef.current;
-          if (!canvas) return null;
+        getCanvas: (withBackground = true) => {
+          if (!canvasWidth || !canvasHeight) return null;
           
           const exportCanvas = document.createElement('canvas');
           exportCanvas.width = canvasWidth;
@@ -119,7 +118,7 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
           const ctx = exportCanvas.getContext('2d');
           if (!ctx) return null;
           
-          if (backgroundImage) {
+          if (withBackground && backgroundImage) {
               ctx.drawImage(backgroundImage, 0, 0, canvasWidth, canvasHeight);
           } else {
               ctx.fillStyle = '#ffffff';
@@ -139,44 +138,51 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
         resetView,
      }));
     
+    const handleResize = React.useCallback(() => {
+        redrawCanvas();
+    }, [redrawCanvas]);
+
     React.useEffect(() => {
         const container = containerRef.current;
         if (!container) return;
 
-        const resizeObserver = new ResizeObserver(() => {
-           redrawCanvas();
-        });
+        const resizeObserver = new ResizeObserver(handleResize);
         resizeObserver.observe(container);
         
         return () => {
             resizeObserver.disconnect();
         };
-    }, [redrawCanvas]);
+    }, [handleResize]);
+
+    const initializeView = React.useCallback(() => {
+        const container = containerRef.current;
+        if (!container || !canvasWidth || !canvasHeight) return;
+
+        const containerWidth = container.clientWidth;
+        const containerHeight = container.clientHeight;
+
+        const scaleX = containerWidth / canvasWidth;
+        const scaleY = containerHeight / canvasHeight;
+        const scale = Math.min(scaleX, scaleY) * 0.95;
+
+        const panX = (containerWidth - (canvasWidth * scale)) / 2;
+        const panY = (containerHeight - (canvasHeight * scale)) / 2;
+
+        viewStateRef.current = {
+            scale: scale,
+            pan: { x: panX, y: panY },
+            isPanning: false,
+            panStart: { x: 0, y: 0 },
+        };
+        redrawCanvas();
+    }, [canvasWidth, canvasHeight, redrawCanvas]);
+
 
     React.useEffect(() => {
         if (canvasWidth > 0 && canvasHeight > 0) {
-            const container = containerRef.current;
-            if (!container) return;
-
-            const containerWidth = container.clientWidth;
-            const containerHeight = container.clientHeight;
-
-            const scaleX = containerWidth / canvasWidth;
-            const scaleY = containerHeight / canvasHeight;
-            const scale = Math.min(scaleX, scaleY) * 0.95;
-
-            const panX = (containerWidth - (canvasWidth * scale)) / 2;
-            const panY = (containerHeight - (canvasHeight * scale)) / 2;
-
-            viewStateRef.current = {
-                scale: scale,
-                pan: { x: panX, y: panY },
-                isPanning: false,
-                panStart: { x: 0, y: 0 },
-            };
+            initializeView();
         }
-        redrawCanvas();
-    }, [canvasWidth, canvasHeight]);
+    }, [canvasWidth, canvasHeight, initializeView]);
 
 
     const getTransformedMousePos = (e: React.MouseEvent | React.TouchEvent | React.WheelEvent) => {
@@ -290,6 +296,10 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
     }, [redrawCanvas]);
 
     React.useEffect(() => {
+        redrawCanvas();
+    }, [texts, selectedTextId, backgroundImage, redrawCanvas]);
+
+    React.useEffect(() => {
         const canvas = internalCanvasRef.current;
         if (!canvas) return;
         
@@ -330,5 +340,3 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
   }
 );
 ComposerCanvas.displayName = 'ComposerCanvas';
-
-    
