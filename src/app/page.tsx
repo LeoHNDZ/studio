@@ -11,9 +11,9 @@ import {
   SidebarTrigger,
 } from '@/components/ui/sidebar';
 import { ComposerControls } from '@/components/composer-controls';
-import { ComposerCanvas } from '@/components/composer-canvas';
+import { ComposerCanvas, type ComposerCanvasHandle } from '@/components/composer-canvas';
 import { Button } from '@/components/ui/button';
-import { Download, Printer, TextQuoteIcon, Image as ImageIcon } from 'lucide-react';
+import { Download, Printer, TextQuoteIcon, Image as ImageIcon, RefreshCcw } from 'lucide-react';
 import { nanoid } from 'nanoid';
 import { useToast } from '@/hooks/use-toast';
 
@@ -25,7 +25,7 @@ export default function Home() {
   const [texts, setTexts] = React.useState<TextElement[]>([]);
   const [selectedTextId, setSelectedTextId] = React.useState<string | null>(null);
   const [contacts, setContacts] = React.useState<Contact[]>([]);
-  const canvasRef = React.useRef<HTMLCanvasElement>(null);
+  const canvasRef = React.useRef<ComposerCanvasHandle>(null);
   const { toast } = useToast();
 
   const [canvasWidth, setCanvasWidth] = React.useState<number | null>(null);
@@ -73,19 +73,25 @@ export default function Home() {
   };
   
   const clearBackgroundImage = () => {
-    setClearedBackgroundImage(backgroundImage);
+    if (backgroundImage) {
+        setClearedBackgroundImage(backgroundImage);
+    }
     setBackgroundImage(null);
+    setCanvasWidth(800);
+    setCanvasHeight(600);
   };
 
   const restoreBackgroundImage = () => {
     if (clearedBackgroundImage) {
+      setCanvasWidth(clearedBackgroundImage.width);
+      setCanvasHeight(clearedBackgroundImage.height);
       setBackgroundImage(clearedBackgroundImage);
       setClearedBackgroundImage(null);
     }
   };
 
   const addText = (text: string, options?: Partial<Omit<TextElement, 'id' | 'text'>>) => {
-    const canvas = canvasRef.current;
+    const canvas = canvasRef.current?.getCanvas();
     if (!canvas) return;
     
     const newText: TextElement = {
@@ -116,7 +122,7 @@ export default function Home() {
   }, [texts, selectedTextId]);
 
   const handleExport = () => {
-    const canvas = canvasRef.current;
+    const canvas = canvasRef.current?.getCanvas();
     if (!canvas) {
       toast({
         title: 'Error',
@@ -141,15 +147,19 @@ export default function Home() {
   };
   
   const handlePrint = (withBackground = false) => {
-    const canvas = canvasRef.current;
+    const canvas = canvasRef.current?.getCanvas();
     if (!canvas) {
         toast({ title: 'Error', description: 'Canvas not found.', variant: 'destructive' });
         return;
     }
 
+    const dpr = window.devicePixelRatio || 1;
+    const printCanvasWidth = canvas.width / dpr;
+    const printCanvasHeight = canvas.height / dpr;
+
     const printCanvas = document.createElement('canvas');
-    printCanvas.width = canvas.width;
-    printCanvas.height = canvas.height;
+    printCanvas.width = printCanvasWidth;
+    printCanvas.height = printCanvasHeight;
     
     const ctx = printCanvas.getContext('2d');
 
@@ -159,10 +169,10 @@ export default function Home() {
     }
     
     if (withBackground && backgroundImage) {
-      ctx.drawImage(backgroundImage, 0, 0, printCanvas.width, printCanvas.height);
+      ctx.drawImage(backgroundImage, 0, 0, printCanvasWidth, printCanvasHeight);
     } else {
       ctx.fillStyle = 'white';
-      ctx.fillRect(0, 0, printCanvas.width, printCanvas.height);
+      ctx.fillRect(0, 0, printCanvasWidth, printCanvasHeight);
     }
     
     texts.forEach(text => {
@@ -174,7 +184,8 @@ export default function Home() {
     });
     
     const dataUrl = printCanvas.toDataURL('image/png');
-    const printWindow = window.open('', '', `height=${printCanvas.height},width=${printCanvas.width}`);
+    
+    const printWindow = window.open('', '', `height=${printCanvasHeight},width=${printCanvasWidth}`);
     
     if (!printWindow) {
         toast({
@@ -196,11 +207,12 @@ export default function Home() {
                     }
                     body {
                         margin: 0;
+                        background-color: ${withBackground ? 'transparent' : 'white'};
                     }
                     img {
                         width: 100%;
-                        height: 100%;
-                        image-rendering: pixelated;
+                        height: auto;
+                        object-fit: contain;
                     }
                 </style>
             </head>
@@ -249,6 +261,10 @@ export default function Home() {
           <header className="flex items-center justify-between p-2 border-b bg-card">
             <SidebarTrigger />
             <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={() => canvasRef.current?.resetView()}>
+                <RefreshCcw className="mr-2 h-4 w-4" />
+                Reset View
+              </Button>
               <Button variant="outline" size="sm" onClick={() => handlePrint(false)}>
                 <Printer className="mr-2 h-4 w-4" />
                 Print Text
