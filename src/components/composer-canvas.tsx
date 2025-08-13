@@ -35,15 +35,16 @@ export const ComposerCanvas = React.forwardRef<HTMLCanvasElement, ComposerCanvas
       const ctx = canvas.getContext('2d');
       if (!ctx) return;
 
-      const dpr = window.devicePixelRatio || 1;
-      const displayWidth = canvas.clientWidth;
-      const displayHeight = canvas.clientHeight;
-      
-      if (canvas.width !== Math.floor(displayWidth * dpr) || canvas.height !== Math.floor(displayHeight * dpr)) {
-         canvas.width = Math.floor(displayWidth * dpr);
-         canvas.height = Math.floor(displayHeight * dpr);
+      if (!backgroundImage) {
+        const dpr = window.devicePixelRatio || 1;
+        const displayWidth = canvas.clientWidth;
+        const displayHeight = canvas.clientHeight;
+        
+        if (canvas.width !== Math.floor(displayWidth * dpr) || canvas.height !== Math.floor(displayHeight * dpr)) {
+           canvas.width = Math.floor(displayWidth * dpr);
+           canvas.height = Math.floor(displayHeight * dpr);
+        }
       }
-
 
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -58,9 +59,6 @@ export const ComposerCanvas = React.forwardRef<HTMLCanvasElement, ComposerCanvas
         ctx.textBaseline = 'middle';
         ctx.fillText('Upload a background image to start', canvas.width / 2, canvas.height / 2);
       }
-
-      const scaleX = canvas.width / (backgroundImage?.width || canvas.width);
-      const scaleY = canvas.height / (backgroundImage?.height || canvas.height);
       
       texts.forEach((text) => {
         ctx.font = `${text.fontSize}px ${text.fontFamily}`;
@@ -129,8 +127,11 @@ export const ComposerCanvas = React.forwardRef<HTMLCanvasElement, ComposerCanvas
       const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
       const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
 
-      const canvasX = (clientX - rect.left) * (canvas.width / rect.width);
-      const canvasY = (clientY - rect.top) * (canvas.height / rect.height);
+      const scaleX = canvas.width / rect.width;
+      const scaleY = canvas.height / rect.height;
+      
+      const canvasX = (clientX - rect.left) * scaleX;
+      const canvasY = (clientY - rect.top) * scaleY;
       
       return { x: canvasX, y: canvasY };
     };

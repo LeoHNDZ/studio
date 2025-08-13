@@ -46,13 +46,6 @@ export default function Home() {
   const clearBackgroundImage = () => {
     setClearedBackgroundImage(backgroundImage);
     setBackgroundImage(null);
-    const canvas = canvasRef.current;
-    // Optionally reset canvas to a default size or fit container
-    if(canvas && canvas.parentElement){
-      const rect = canvas.parentElement.getBoundingClientRect();
-      canvas.width = rect.width;
-      canvas.height = rect.height;
-    }
   };
 
   const restoreBackgroundImage = () => {
@@ -121,51 +114,81 @@ export default function Home() {
   };
 
   const handlePrint = () => {
-    const printWindow = window.open('', '', 'height=800,width=1000');
+    const canvas = canvasRef.current;
+    if (!canvas) {
+        toast({ title: 'Error', description: 'Canvas not found.', variant: 'destructive' });
+        return;
+    }
+  
+    const printWindow = window.open('', '', `height=${canvas.height},width=${canvas.width}`);
     if (!printWindow) {
-      toast({
-        title: 'Error',
-        description: 'Could not open print window. Please disable popup blockers.',
-        variant: 'destructive',
-      });
-      return;
+        toast({
+            title: 'Error',
+            description: 'Could not open print window. Please disable popup blockers.',
+            variant: 'destructive',
+        });
+        return;
     }
 
-    const canvas = canvasRef.current;
-    const canvasWidth = canvas?.width || 1000;
-    const canvasHeight = canvas?.height || 800;
-    
-    let printContent = `
-      <html>
-        <head>
-          <title>Text-Only Print</title>
-          <style>
-            @import url('https://fonts.googleapis.com/css2?family=Inter&display=swap');
-            body { margin: 0; font-family: 'Inter', sans-serif; }
-            .print-area { position: relative; width: ${canvasWidth}px; height: ${canvasHeight}px; overflow: hidden; }
-            .text-element { position: absolute; white-space: pre; transform-origin: top left; }
-          </style>
-        </head>
-        <body>
-          <div class="print-area">
-    `;
+    const dpr = window.devicePixelRatio || 1;
+    const canvasWidth = canvas.width / dpr;
+    const canvasHeight = canvas.height / dpr;
 
+    let printContent = `
+        <html>
+            <head>
+                <title>Print</title>
+                <link rel="preconnect" href="https://fonts.googleapis.com">
+                <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+                <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
+                <style>
+                    @page {
+                        size: ${canvasWidth}px ${canvasHeight}px;
+                        margin: 0;
+                    }
+                    body {
+                        margin: 0;
+                        font-family: 'Inter', sans-serif;
+                        width: ${canvasWidth}px;
+                        height: ${canvasHeight}px;
+                    }
+                    .print-area {
+                        position: relative;
+                        width: 100%;
+                        height: 100%;
+                        overflow: hidden;
+                    }
+                    .text-element {
+                        position: absolute;
+                        white-space: pre;
+                        transform-origin: top left;
+                        line-height: 1;
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="print-area">
+    `;
+    
     texts.forEach(text => {
-      printContent += `<div class="text-element" style="left: ${text.x}px; top: ${text.y - text.fontSize}px; font-size: ${text.fontSize}px; color: ${text.color}; font-family: ${text.fontFamily};">${text.text}</div>`;
+        const x = text.x / dpr;
+        const y = text.y / dpr;
+        const fontSize = text.fontSize / dpr;
+        printContent += `<div class="text-element" style="left: ${x}px; top: ${y}px; font-size: ${fontSize}px; color: ${text.color}; font-family: '${text.fontFamily}';">${text.text}</div>`;
     });
 
     printContent += `
-          </div>
-        </body>
-      </html>
+                </div>
+            </body>
+        </html>
     `;
-
+    
     printWindow.document.write(printContent);
     printWindow.document.close();
     printWindow.focus();
     setTimeout(() => {
-       printWindow.print();
-       printWindow.close();
+        printWindow.print();
+        printWindow.close();
     }, 250);
   };
 
