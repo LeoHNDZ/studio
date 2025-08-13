@@ -145,62 +145,66 @@ export default function Home() {
   
   const handlePrint = (withBackground = false) => {
     const wasSelected = selectedTextId;
-    // Deselect text to avoid printing the selection box
     if (wasSelected) {
       setSelectedTextId(null);
     }
-
+  
     setTimeout(() => {
       const canvas = canvasRef.current?.getCanvas(withBackground);
       if (!canvas) {
-          toast({ title: 'Error', description: 'Could not generate print image.', variant: 'destructive' });
-          if (wasSelected) setSelectedTextId(wasSelected);
-          return;
+        toast({ title: 'Error', description: 'Could not generate print image.', variant: 'destructive' });
+        if (wasSelected) setSelectedTextId(wasSelected);
+        return;
       }
       
       const dataUrl = canvas.toDataURL('image/png');
-      
       const iframe = document.createElement('iframe');
       iframe.style.display = 'none';
       document.body.appendChild(iframe);
-      
+  
       const iframeDoc = iframe.contentWindow?.document;
       if (!iframeDoc) {
-          toast({ title: 'Error', description: 'Could not create print frame.', variant: 'destructive' });
-          if (wasSelected) setSelectedTextId(wasSelected);
-          document.body.removeChild(iframe);
-          return;
+        toast({ title: 'Error', description: 'Could not create print frame.', variant: 'destructive' });
+        if (wasSelected) setSelectedTextId(wasSelected);
+        document.body.removeChild(iframe);
+        return;
       }
-
+  
       iframeDoc.open();
       iframeDoc.write(`
-          <html>
-              <head>
-                  <title>Print</title>
-                  <style>
-                      @page { size: letter; margin: 0; }
-                      body { margin: 0; }
-                      img { width: 100%; height: 100%; object-fit: contain; }
-                  </style>
-              </head>
-              <body>
-                  <img src="${dataUrl}" />
-              </body>
-          </html>
+        <html>
+          <head>
+            <title>Print</title>
+            <style>
+              @page { size: letter; margin: 0; }
+              body { margin: 0; }
+              img { width: 100%; height: 100%; object-fit: contain; }
+            </style>
+          </head>
+          <body>
+            <img id="print-image" src="${dataUrl}" />
+          </body>
+        </html>
       `);
       iframeDoc.close();
-
-      iframe.contentWindow?.focus();
-      iframe.contentWindow?.print();
-
-      // The timeout gives the browser time to open the print dialog.
-      setTimeout(() => {
-          document.body.removeChild(iframe);
-          if (wasSelected) {
+  
+      const printImage = iframe.contentWindow?.document.getElementById('print-image');
+      if (printImage) {
+        printImage.onload = () => {
+          iframe.contentWindow?.focus();
+          iframe.contentWindow?.print();
+          setTimeout(() => {
+            document.body.removeChild(iframe);
+            if (wasSelected) {
               setSelectedTextId(wasSelected);
-          }
-      }, 500);
-
+            }
+          }, 100);
+        };
+      } else {
+        toast({ title: 'Error', description: 'Could not find print image in frame.', variant: 'destructive' });
+        document.body.removeChild(iframe);
+        if (wasSelected) setSelectedTextId(wasSelected);
+      }
     }, 100);
   };
 
