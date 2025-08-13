@@ -66,12 +66,10 @@ export default function Home() {
         const canvas = canvasRef.current;
         if (canvas) {
           const dpr = window.devicePixelRatio || 1;
-          canvas.width = img.width * dpr;
-          canvas.height = img.height * dpr;
+          canvas.width = img.width;
+          canvas.height = img.height;
           canvas.style.width = `${img.width}px`;
           canvas.style.height = `${img.height}px`;
-          const ctx = canvas.getContext('2d');
-          ctx?.scale(dpr, dpr);
         }
         setBackgroundImage(img);
         setClearedBackgroundImage(null); 
@@ -96,14 +94,12 @@ export default function Home() {
   const addText = (text: string, options?: Partial<Omit<TextElement, 'id' | 'text'>>) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-
-    const dpr = window.devicePixelRatio || 1;
     
     const newText: TextElement = {
       id: nanoid(),
       text,
-      x: (canvas.width / dpr) / 2,
-      y: (canvas.height / dpr) / 2,
+      x: canvas.width / 2,
+      y: canvas.height / 2,
       fontSize: 48,
       fontFamily: 'Inter',
       color: '#000000',
@@ -154,11 +150,41 @@ export default function Home() {
   const handlePrint = (withBackground = false) => {
     const canvas = canvasRef.current;
     if (!canvas) {
-        toast({ title: 'Error', description: 'Canvas not found.', variant: 'destructive' });
+      toast({ title: 'Error', description: 'Canvas not found.', variant: 'destructive' });
+      return;
+    }
+
+    // Create a temporary canvas to draw the final output
+    const printCanvas = document.createElement('canvas');
+    printCanvas.width = canvas.width;
+    printCanvas.height = canvas.height;
+    const ctx = printCanvas.getContext('2d');
+
+    if (!ctx) {
+        toast({ title: 'Error', description: 'Could not create print context.', variant: 'destructive' });
         return;
     }
-  
-    const printWindow = window.open('', '', `height=${canvas.style.height},width=${canvas.style.width}`);
+
+    // Draw background if requested
+    if (withBackground && backgroundImage) {
+        ctx.drawImage(backgroundImage, 0, 0, printCanvas.width, printCanvas.height);
+    } else {
+        ctx.fillStyle = 'white';
+        ctx.fillRect(0, 0, printCanvas.width, printCanvas.height);
+    }
+
+    // Draw text elements
+    texts.forEach(text => {
+        ctx.font = `${text.fontSize}px ${text.fontFamily}`;
+        ctx.fillStyle = text.color;
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'top';
+        ctx.fillText(text.text, text.x, text.y);
+    });
+
+    const dataUrl = printCanvas.toDataURL('image/png');
+
+    const printWindow = window.open('', '', `height=${canvas.height},width=${canvas.width}`);
     if (!printWindow) {
         toast({
             title: 'Error',
@@ -167,62 +193,31 @@ export default function Home() {
         });
         return;
     }
-
-    const canvasWidth = parseInt(canvas.style.width, 10) || canvas.width;
-    const canvasHeight = parseInt(canvas.style.height, 10) || canvas.height;
-
-    const backgroundStyle = withBackground && backgroundImage
-        ? `background-image: url(${backgroundImage.src}); background-size: cover; background-repeat: no-repeat;`
-        : 'background-color: white;';
-
-    let printContent = `
+    
+    printWindow.document.write(`
         <html>
             <head>
                 <title>Print</title>
-                <link rel="preconnect" href="https://fonts.googleapis.com">
-                <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-                <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
                 <style>
                     @page {
-                        size: ${canvasWidth}px ${canvasHeight}px;
+                        size: ${canvas.width}px ${canvas.height}px;
                         margin: 0;
                     }
                     body {
                         margin: 0;
-                        font-family: 'Inter', sans-serif;
-                        width: ${canvasWidth}px;
-                        height: ${canvasHeight}px;
                     }
-                    .print-area {
-                        position: relative;
+                    img {
                         width: 100%;
                         height: 100%;
-                        overflow: hidden;
-                        ${backgroundStyle}
-                    }
-                    .text-element {
-                        position: absolute;
-                        white-space: pre;
-                        transform-origin: top left;
-                        line-height: 1;
                     }
                 </style>
             </head>
             <body>
-                <div class="print-area">
-    `;
-    
-    texts.forEach(text => {
-        printContent += `<div class="text-element" style="left: ${text.x}px; top: ${text.y}px; font-size: ${text.fontSize}px; color: ${text.color}; font-family: '${text.fontFamily}';">${text.text}</div>`;
-    });
-
-    printContent += `
-                </div>
+                <img src="${dataUrl}" />
             </body>
         </html>
-    `;
-    
-    printWindow.document.write(printContent);
+    `);
+
     printWindow.document.close();
     printWindow.focus();
     setTimeout(() => {
@@ -230,6 +225,7 @@ export default function Home() {
         printWindow.close();
     }, 250);
   };
+
 
   return (
     <SidebarProvider>
