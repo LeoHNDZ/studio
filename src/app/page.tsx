@@ -157,23 +157,27 @@ export default function Home() {
   };
   
   const handlePrint = (withBackground = false) => {
-    const canvas = canvasRef.current?.getCanvas(withBackground);
-    if (!canvas) {
-        toast({ title: 'Error', description: 'Could not generate print image.', variant: 'destructive' });
-        return;
-    }
-    
     const wasSelected = selectedTextId;
     if (wasSelected) {
       setSelectedTextId(null);
     }
-
-    // Use a short timeout to allow React to re-render with the deselected text
+  
+    // Use a timeout to ensure deselection has rendered
     setTimeout(() => {
+      const canvas = canvasRef.current?.getCanvas(withBackground);
+      if (!canvas) {
+        toast({ title: 'Error', description: 'Could not generate print image.', variant: 'destructive' });
+        // Restore selection if print fails
+        if (wasSelected) {
+          setSelectedTextId(wasSelected);
+        }
+        return;
+      }
+      
       const dataUrl = canvas.toDataURL('image/png');
       setPrintDataUrl(dataUrl);
-
-      // Restore selection if there was one, but it won't affect the printout
+  
+      // Restore selection after setting print data, it won't affect printout
       if (wasSelected) {
         setSelectedTextId(wasSelected);
       }
