@@ -38,6 +38,7 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
    }, ref) => {
     const internalCanvasRef = React.useRef<HTMLCanvasElement>(null);
     const containerRef = React.useRef<HTMLDivElement>(null);
+    const hasInitialized = React.useRef(false);
 
     const [draggingState, setDraggingState] = React.useState<{ id: string; offsetX: number; offsetY: number } | null>(null);
     
@@ -153,8 +154,9 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
 
     const initializeView = React.useCallback(() => {
         const container = containerRef.current;
-        if (!container || !canvasWidth || !canvasHeight) return;
-
+        if (!container || !canvasWidth || !canvasHeight || hasInitialized.current) return;
+        
+        hasInitialized.current = true;
         const containerWidth = container.clientWidth;
         const containerHeight = container.clientHeight;
 
@@ -369,4 +371,5 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
 );
 ComposerCanvas.displayName = 'ComposerCanvas';
 
+    
     
