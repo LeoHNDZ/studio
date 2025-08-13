@@ -38,19 +38,21 @@ export const ComposerCanvas = React.forwardRef<HTMLCanvasElement, ComposerCanvas
 
     const redrawCanvas = React.useCallback(() => {
       const canvas = internalCanvasRef.current;
-      if (!canvas) return;
+      if (!canvas || !canvas.parentElement) return;
       const ctx = canvas.getContext('2d');
       if (!ctx) return;
       
       const { scale, pan } = viewStateRef.current;
       const dpr = window.devicePixelRatio || 1;
       
-      const displayWidth = canvas.clientWidth;
-      const displayHeight = canvas.clientHeight;
-      
+      const displayWidth = canvas.parentElement.clientWidth;
+      const displayHeight = canvas.parentElement.clientHeight;
+
       if (canvas.width !== Math.floor(displayWidth * dpr) || canvas.height !== Math.floor(displayHeight * dpr)) {
          canvas.width = Math.floor(displayWidth * dpr);
          canvas.height = Math.floor(displayHeight * dpr);
+         canvas.style.width = `${displayWidth}px`;
+         canvas.style.height = `${displayHeight}px`;
          ctx.scale(dpr,dpr);
       }
       
@@ -59,16 +61,20 @@ export const ComposerCanvas = React.forwardRef<HTMLCanvasElement, ComposerCanvas
       ctx.translate(pan.x, pan.y);
       ctx.scale(scale, scale);
 
+      // Render background or placeholder
+      ctx.fillStyle = 'hsl(var(--card))';
+      ctx.fillRect(0 - pan.x / scale, 0 - pan.y / scale, canvas.width / dpr / scale, canvas.height / dpr / scale);
+      
       if (backgroundImage) {
         ctx.drawImage(backgroundImage, 0, 0, backgroundImage.width, backgroundImage.height);
       } else {
-        ctx.fillStyle = '#FFFFFF';
-        ctx.fillRect(0, 0, canvas.width / (dpr * scale), canvas.height / (dpr*scale));
         ctx.fillStyle = 'hsl(var(--muted-foreground))'
         ctx.font = '14px Inter';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText('Upload a background image to start', (canvas.width / dpr / scale) / 2 - (pan.x / scale) , (canvas.height / dpr / scale) / 2 - (pan.y / scale));
+        const centerX = (canvas.width / dpr / scale) / 2 - (pan.x / scale);
+        const centerY = (canvas.height / dpr / scale) / 2 - (pan.y / scale);
+        ctx.fillText('Upload a background image to start', centerX, centerY);
       }
       
       texts.forEach((text) => {
@@ -90,7 +96,16 @@ export const ComposerCanvas = React.forwardRef<HTMLCanvasElement, ComposerCanvas
 
       ctx.restore();
     }, [backgroundImage, texts, selectedTextId, getTextMetrics]);
-
+    
+    const resetView = React.useCallback(() => {
+       viewStateRef.current = {
+            scale: 1,
+            pan: { x: 0, y: 0 },
+            isPanning: false,
+            panStart: { x: 0, y: 0 },
+        };
+        redrawCanvas();
+    }, [redrawCanvas]);
 
     React.useEffect(() => {
       const canvas = internalCanvasRef.current;
@@ -108,14 +123,8 @@ export const ComposerCanvas = React.forwardRef<HTMLCanvasElement, ComposerCanvas
     }, [redrawCanvas]);
     
     React.useEffect(() => {
-        viewStateRef.current = {
-            scale: 1,
-            pan: { x: 0, y: 0 },
-            isPanning: false,
-            panStart: { x: 0, y: 0 },
-        };
-        redrawCanvas();
-    }, [backgroundImage]);
+       resetView();
+    }, [backgroundImage, resetView]);
 
     React.useEffect(() => {
       redrawCanvas();
@@ -128,8 +137,6 @@ export const ComposerCanvas = React.forwardRef<HTMLCanvasElement, ComposerCanvas
       
       const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
       const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
-
-      const dpr = window.devicePixelRatio || 1;
 
       const canvasX = (clientX - rect.left);
       const canvasY = (clientY - rect.top);
@@ -204,12 +211,12 @@ export const ComposerCanvas = React.forwardRef<HTMLCanvasElement, ComposerCanvas
         }
     }, [draggingState]);
 
-    const handleWheel = React.useCallback((e: React.WheelEvent) => {
+    const handleWheel = React.useCallback((e: WheelEvent) => {
       e.preventDefault();
       const canvas = internalCanvasRef.current;
       if (!canvas) return;
 
-      const { clientX, clientY } = getTransformedMousePos(e);
+      const { clientX, clientY } = getTransformedMousePos(e as unknown as React.WheelEvent);
 
       if (e.ctrlKey || e.metaKey || e.shiftKey) { 
         const zoomFactor = 1.1;
@@ -243,16 +250,14 @@ export const ComposerCanvas = React.forwardRef<HTMLCanvasElement, ComposerCanvas
         const canvas = internalCanvasRef.current;
         if (!canvas) return;
 
-        const handleWheelEvent = (e: WheelEvent) => handleWheel(e as any);
-
-        canvas.addEventListener('wheel', handleWheelEvent, { passive: false });
-        return () => canvas.removeEventListener('wheel', handleWheelEvent);
+        canvas.addEventListener('wheel', handleWheel, { passive: false });
+        return () => canvas.removeEventListener('wheel', handleWheel);
     }, [handleWheel]);
 
     return (
       <div 
         ref={containerRef} 
-        className="w-full h-full rounded-lg bg-card shadow-inner overflow-hidden flex justify-center items-center touch-none"
+        className="w-full h-full rounded-lg bg-card shadow-inner overflow-hidden flex justify-center items-center"
       >
         <canvas
           ref={internalCanvasRef}
@@ -263,11 +268,12 @@ export const ComposerCanvas = React.forwardRef<HTMLCanvasElement, ComposerCanvas
           onTouchStart={handleMouseDown}
           onTouchMove={handleMouseMove}
           onTouchEnd={handleMouseUp}
+          className="touch-none"
           style={{
             cursor: viewStateRef.current.isPanning ? 'grabbing' : (draggingState ? 'grabbing' : (selectedTextId ? 'pointer' : 'default')),
+            maxWidth: '100%',
+            maxHeight: '100%',
             objectFit: 'contain',
-            width: '100%',
-            height: '100%',
           }}
         />
       </div>

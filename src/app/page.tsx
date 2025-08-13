@@ -65,14 +65,12 @@ export default function Home() {
       img.onload = () => {
         const canvas = canvasRef.current;
         if (canvas) {
-          const dpr = window.devicePixelRatio || 1;
           canvas.width = img.width;
           canvas.height = img.height;
-          canvas.style.width = `${img.width}px`;
-          canvas.style.height = `${img.height}px`;
         }
         setBackgroundImage(img);
         setClearedBackgroundImage(null); 
+        setTexts([]);
       };
       img.src = e.target?.result as string;
     };
@@ -98,8 +96,8 @@ export default function Home() {
     const newText: TextElement = {
       id: nanoid(),
       text,
-      x: canvas.width / 2,
-      y: canvas.height / 2,
+      x: canvas.width / 4,
+      y: canvas.height / 4,
       fontSize: 48,
       fontFamily: 'Inter',
       color: '#000000',
@@ -150,11 +148,10 @@ export default function Home() {
   const handlePrint = (withBackground = false) => {
     const canvas = canvasRef.current;
     if (!canvas) {
-      toast({ title: 'Error', description: 'Canvas not found.', variant: 'destructive' });
-      return;
+        toast({ title: 'Error', description: 'Canvas not found.', variant: 'destructive' });
+        return;
     }
 
-    // Create a temporary canvas to draw the final output
     const printCanvas = document.createElement('canvas');
     printCanvas.width = canvas.width;
     printCanvas.height = canvas.height;
@@ -164,16 +161,14 @@ export default function Home() {
         toast({ title: 'Error', description: 'Could not create print context.', variant: 'destructive' });
         return;
     }
+    
+    ctx.fillStyle = 'white';
+    ctx.fillRect(0, 0, printCanvas.width, printCanvas.height);
 
-    // Draw background if requested
     if (withBackground && backgroundImage) {
         ctx.drawImage(backgroundImage, 0, 0, printCanvas.width, printCanvas.height);
-    } else {
-        ctx.fillStyle = 'white';
-        ctx.fillRect(0, 0, printCanvas.width, printCanvas.height);
     }
-
-    // Draw text elements
+    
     texts.forEach(text => {
         ctx.font = `${text.fontSize}px ${text.fontFamily}`;
         ctx.fillStyle = text.color;
@@ -181,10 +176,10 @@ export default function Home() {
         ctx.textBaseline = 'top';
         ctx.fillText(text.text, text.x, text.y);
     });
-
+    
     const dataUrl = printCanvas.toDataURL('image/png');
-
     const printWindow = window.open('', '', `height=${canvas.height},width=${canvas.width}`);
+    
     if (!printWindow) {
         toast({
             title: 'Error',
@@ -193,7 +188,7 @@ export default function Home() {
         });
         return;
     }
-    
+
     printWindow.document.write(`
         <html>
             <head>
@@ -209,6 +204,7 @@ export default function Home() {
                     img {
                         width: 100%;
                         height: 100%;
+                        image-rendering: pixelated;
                     }
                 </style>
             </head>
@@ -272,7 +268,7 @@ export default function Home() {
               </Button>
             </div>
           </header>
-          <main className="flex-1 p-4 overflow-hidden">
+          <main className="flex-1 p-4 overflow-auto">
             <ComposerCanvas
               ref={canvasRef}
               backgroundImage={backgroundImage}
