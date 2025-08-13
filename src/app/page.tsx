@@ -17,6 +17,8 @@ import { Download, Printer, TextQuoteIcon, Image as ImageIcon } from 'lucide-rea
 import { nanoid } from 'nanoid';
 import { useToast } from '@/hooks/use-toast';
 
+const DEFAULT_IMAGE_URL = '/sunshine_windows_form.jpg';
+
 export default function Home() {
   const [backgroundImage, setBackgroundImage] = React.useState<HTMLImageElement | null>(null);
   const [clearedBackgroundImage, setClearedBackgroundImage] = React.useState<HTMLImageElement | null>(null);
@@ -28,6 +30,16 @@ export default function Home() {
 
   const [canvasWidth, setCanvasWidth] = React.useState<number | null>(null);
   const [canvasHeight, setCanvasHeight] = React.useState<number | null>(null);
+  
+  React.useEffect(() => {
+    const img = new Image();
+    img.onload = () => {
+      setCanvasWidth(img.width);
+      setCanvasHeight(img.height);
+      setBackgroundImage(img);
+    };
+    img.src = DEFAULT_IMAGE_URL;
+  }, []);
 
   React.useEffect(() => {
     try {
@@ -58,23 +70,6 @@ export default function Home() {
   const deleteContact = (id: string) => {
     const updatedContacts = contacts.filter(c => c.id !== id);
     saveContacts(updatedContacts);
-  };
-
-
-  const handleImageUpload = (file: File) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const img = new Image();
-      img.onload = () => {
-        setCanvasWidth(img.width);
-        setCanvasHeight(img.height);
-        setBackgroundImage(img);
-        setClearedBackgroundImage(null); 
-        setTexts([]);
-      };
-      img.src = e.target?.result as string;
-    };
-    reader.readAsDataURL(file);
   };
   
   const clearBackgroundImage = () => {
@@ -157,11 +152,9 @@ export default function Home() {
     }
 
     const printCanvas = document.createElement('canvas');
+    printCanvas.width = canvas.width;
+    printCanvas.height = canvas.height;
     
-    const dpr = window.devicePixelRatio || 1;
-    printCanvas.width = canvas.width / dpr;
-    printCanvas.height = canvas.height / dpr;
-
     const ctx = printCanvas.getContext('2d');
 
     if (!ctx) {
@@ -169,13 +162,9 @@ export default function Home() {
         return;
     }
     
-    if (withBackground) {
-        if(backgroundImage) {
-            ctx.drawImage(backgroundImage, 0, 0, printCanvas.width, printCanvas.height);
-        } else {
-            ctx.fillStyle = 'white';
-            ctx.fillRect(0, 0, printCanvas.width, printCanvas.height);
-        }
+    // Set a white background for printing text only, otherwise use the image
+    if (withBackground && backgroundImage) {
+      ctx.drawImage(backgroundImage, 0, 0, printCanvas.width, printCanvas.height);
     } else {
       ctx.fillStyle = 'white';
       ctx.fillRect(0, 0, printCanvas.width, printCanvas.height);
@@ -246,7 +235,6 @@ export default function Home() {
         </SidebarHeader>
         <SidebarContent className="p-0">
           <ComposerControls
-            onImageUpload={handleImageUpload}
             onClearBackground={clearBackgroundImage}
             onRestoreBackground={restoreBackgroundImage}
             onAddText={addText}

@@ -47,8 +47,13 @@ export const ComposerCanvas = React.forwardRef<HTMLCanvasElement, ComposerCanvas
       const { scale, pan } = viewStateRef.current;
       const dpr = window.devicePixelRatio || 1;
       
-      const effectiveWidth = canvasWidth || canvas.parentElement?.clientWidth || 500;
-      const effectiveHeight = canvasHeight || canvas.parentElement?.clientHeight || 500;
+      let effectiveWidth = canvas.parentElement?.clientWidth || 500;
+      let effectiveHeight = canvas.parentElement?.clientHeight || 500;
+
+      if(canvasWidth && canvasHeight) {
+        effectiveWidth = canvasWidth;
+        effectiveHeight = canvasHeight;
+      }
 
       if (canvas.width !== Math.floor(effectiveWidth * dpr) || canvas.height !== Math.floor(effectiveHeight * dpr)) {
          canvas.width = Math.floor(effectiveWidth * dpr);
@@ -68,7 +73,7 @@ export const ComposerCanvas = React.forwardRef<HTMLCanvasElement, ComposerCanvas
       ctx.fillRect(0, 0, canvas.width, canvas.height);
       
       if (backgroundImage) {
-        ctx.drawImage(backgroundImage, 0, 0, canvas.width, canvas.height);
+        ctx.drawImage(backgroundImage, 0, 0, canvas.width / dpr, canvas.height / dpr);
       } else {
         ctx.fillStyle = 'hsl(var(--muted-foreground))'
         ctx.font = '14px Inter';
@@ -76,7 +81,7 @@ export const ComposerCanvas = React.forwardRef<HTMLCanvasElement, ComposerCanvas
         ctx.textBaseline = 'middle';
         const centerX = (canvas.width / dpr / scale) / 2 - (pan.x / scale);
         const centerY = (canvas.height / dpr / scale) / 2 - (pan.y / scale);
-        ctx.fillText('Upload a background image to start', centerX, centerY);
+        ctx.fillText('No background image', centerX, centerY);
       }
       
       texts.forEach((text) => {

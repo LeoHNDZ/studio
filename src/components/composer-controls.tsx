@@ -12,12 +12,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, RotateCcw, Trash2, Upload, X, UserPlus, BookUser } from 'lucide-react';
+import { Plus, RotateCcw, Trash2, X, UserPlus, BookUser } from 'lucide-react';
 import { Card, CardContent } from './ui/card';
 import { ScrollArea } from './ui/scroll-area';
 
 interface ComposerControlsProps {
-  onImageUpload: (file: File) => void;
   onClearBackground: () => void;
   onRestoreBackground: () => void;
   onAddText: (text: string) => void;
@@ -32,7 +31,6 @@ interface ComposerControlsProps {
 }
 
 export function ComposerControls({
-  onImageUpload,
   onClearBackground,
   onRestoreBackground,
   onAddText,
@@ -45,15 +43,8 @@ export function ComposerControls({
   onAddContact,
   onDeleteContact,
 }: ComposerControlsProps) {
-  const fileInputRef = React.useRef<HTMLInputElement>(null);
   const [newContactName, setNewContactName] = React.useState('');
   const [newContactDetails, setNewContactDetails] = React.useState('');
-  
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      onImageUpload(e.target.files[0]);
-    }
-  };
 
   const handleAddContact = () => {
     if (newContactName.trim() && newContactDetails.trim()) {
@@ -68,10 +59,6 @@ export function ComposerControls({
       <AccordionItem value="item-1">
         <AccordionTrigger className="px-4">Background</AccordionTrigger>
         <AccordionContent className="px-4 space-y-2">
-          <Input type="file" accept="image/*" className="hidden" ref={fileInputRef} onChange={handleFileChange} />
-          <Button variant="outline" className="w-full" onClick={() => fileInputRef.current?.click()}>
-            <Upload className="mr-2 h-4 w-4" /> Upload Image
-          </Button>
           {hasBackgroundImage && (
              <Button variant="outline" className="w-full" onClick={onClearBackground}>
                 <X className="mr-2 h-4 w-4" /> Clear Background
