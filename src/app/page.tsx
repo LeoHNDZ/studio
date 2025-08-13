@@ -179,6 +179,7 @@ export default function Home() {
       
       const dataUrl = canvas.toDataURL('image/png');
       const iframe = document.createElement('iframe');
+      
       iframe.style.position = 'fixed';
       iframe.style.width = '0';
       iframe.style.height = '0';
@@ -186,53 +187,39 @@ export default function Home() {
       iframe.style.top = '-9999px';
       iframe.style.left = '-9999px';
       
-      document.body.appendChild(iframe);
+      const html = `
+        <html>
+          <head>
+            <title>Print</title>
+            <style>
+              @page { size: auto; margin: 0; }
+              body { margin: 0; padding: 0; }
+              img { width: 100%; height: auto; object-fit: contain; }
+            </style>
+          </head>
+          <body>
+            <img src="${dataUrl}" />
+          </body>
+        </html>
+      `;
   
-      const iframeDoc = iframe.contentWindow?.document;
-      if (!iframeDoc) {
-        toast({ title: 'Error', description: 'Could not create print frame.', variant: 'destructive' });
-        if (wasSelected) setSelectedTextId(wasSelected);
-        if(iframe.parentElement) document.body.removeChild(iframe);
-        return;
-      }
+      document.body.appendChild(iframe);
+      
+      iframe.srcdoc = html;
 
-      const doPrint = () => {
+      iframe.onload = () => {
         try {
           iframe.contentWindow?.focus();
           iframe.contentWindow?.print();
         } catch(e) {
            toast({ title: 'Error', description: 'Printing failed.', variant: 'destructive' });
         } finally {
-            if (iframe.parentElement) {
-                document.body.removeChild(iframe);
-            }
+            document.body.removeChild(iframe);
             if (wasSelected) {
               setSelectedTextId(wasSelected);
             }
         }
       };
-  
-      iframeDoc.open();
-      iframeDoc.write(`
-        <html>
-          <head>
-            <title>Print</title>
-            <style>
-              @page { size: letter; margin: 0; }
-              body { margin: 0; padding: 0; }
-              img { width: 100%; height: auto; object-fit: contain; }
-            </style>
-          </head>
-          <body>
-            <img src="${dataUrl}" onload="window.print()" />
-          </body>
-        </html>
-      `);
-      iframeDoc.close();
-
-      // Fallback in case onload doesn't fire
-      setTimeout(doPrint, 500);
-  
     }, 100);
   };
 
@@ -314,3 +301,5 @@ export default function Home() {
     </>
   );
 }
+
+    
