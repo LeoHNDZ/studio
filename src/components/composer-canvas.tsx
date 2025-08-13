@@ -264,9 +264,9 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
         viewStateRef.current.scale = newScale;
         viewStateRef.current.pan = {x: newPanX, y: newPanY};
       } else { // Pan
-        const { pan, scale } = viewStateRef.current;
-        viewStateRef.current.pan.x = pan.x - e.deltaX / scale;
-        viewStateRef.current.pan.y = pan.y - e.deltaY / scale;
+        const { pan } = viewStateRef.current;
+        viewStateRef.current.pan.x = pan.x - e.deltaX;
+        viewStateRef.current.pan.y = pan.y - e.deltaY;
       }
       
       redrawCanvas();

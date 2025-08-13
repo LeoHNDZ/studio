@@ -171,7 +171,7 @@ export default function Home() {
             printWindow.document.write(`
                 <html>
                     <head><title>Print</title></head>
-                    <body style="margin: 0;"><img src="${dataUrl}" style="width: 100%;"></body>
+                    <body style="margin: 0;"><img src="${dataUrl}"></body>
                 </html>
             `);
         } else {
@@ -201,7 +201,7 @@ export default function Home() {
             printWindow.document.write(`
                 <html>
                     <head><title>Print</title></head>
-                    <body style="margin: 0;"><img src="${textOnlyDataUrl}" style="width: 100%;"></body>
+                    <body style="margin: 0;"><img src="${textOnlyDataUrl}"></body>
                 </html>
             `);
         }
@@ -265,7 +265,7 @@ export default function Home() {
               </Button>
             </div>
           </header>
-          <main className="flex-1 p-4 overflow-hidden">
+          <main className="flex-1 p-4 overflow-auto">
             <ComposerCanvas
               ref={canvasRef}
               backgroundImage={backgroundImage}
