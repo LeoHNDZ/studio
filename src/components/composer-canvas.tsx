@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from 'react';
@@ -189,7 +190,7 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
     }, [redrawCanvas]);
 
 
-    const getTransformedMousePos = (e: React.MouseEvent | React.TouchEvent | React.WheelEvent) => {
+    const getTransformedMousePos = (e: MouseEvent | React.MouseEvent | React.TouchEvent | React.WheelEvent) => {
       const canvas = internalCanvasRef.current;
       if (!canvas) return { x: 0, y: 0, clientX: 0, clientY: 0 };
       const rect = canvas.getBoundingClientRect();
@@ -209,6 +210,10 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
     };
 
     const handleMouseDown = (e: React.MouseEvent | React.TouchEvent) => {
+      if ('button' in e && e.button === 2) {
+        // This is a right click, handled by onContextMenu
+        return;
+      }
       e.preventDefault();
       const { x, y, clientX, clientY } = getTransformedMousePos(e);
       const ctx = internalCanvasRef.current?.getContext('2d');
@@ -308,6 +313,12 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
       redrawCanvas();
     }, [redrawCanvas]);
 
+    const handleContextMenu = React.useCallback((e: MouseEvent) => {
+      e.preventDefault();
+      const { x, y } = getTransformedMousePos(e);
+      onTextAdd('New Text', { x, y });
+    }, [onTextAdd]);
+
     React.useEffect(() => {
         redrawCanvas();
     }, [texts, selectedTextId, backgroundImage, redrawCanvas]);
@@ -316,7 +327,6 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
         const canvas = internalCanvasRef.current;
         if (!canvas) return;
         
-        const handleContextMenu = (e: MouseEvent) => e.preventDefault();
         canvas.addEventListener('contextmenu', handleContextMenu);
         canvas.addEventListener('wheel', handleWheel, { passive: false });
         window.addEventListener('mouseup', handleMouseUp);
@@ -328,7 +338,7 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
             window.removeEventListener('mouseup', handleMouseUp);
             window.removeEventListener('touchend', handleMouseUp);
         }
-    }, [handleWheel, handleMouseUp]);
+    }, [handleWheel, handleMouseUp, handleContextMenu]);
 
     const getCursorStyle = () => {
       if (pendingText) return 'crosshair';
@@ -358,3 +368,5 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
   }
 );
 ComposerCanvas.displayName = 'ComposerCanvas';
+
+    
