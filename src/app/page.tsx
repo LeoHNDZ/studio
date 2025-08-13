@@ -33,12 +33,12 @@ export default function Home() {
   
   React.useEffect(() => {
     const img = new Image();
+    img.src = DEFAULT_IMAGE_URL;
     img.onload = () => {
       setCanvasWidth(img.width);
       setCanvasHeight(img.height);
       setBackgroundImage(img);
     };
-    img.src = DEFAULT_IMAGE_URL;
   }, []);
 
   React.useEffect(() => {
