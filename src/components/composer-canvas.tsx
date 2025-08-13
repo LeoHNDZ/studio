@@ -11,6 +11,9 @@ interface ComposerCanvasProps {
   setSelectedTextId: (id: string | null) => void;
   canvasWidth: number;
   canvasHeight: number;
+  pendingText: string | null;
+  onTextAdd: (text: string, options: Partial<Omit<TextElement, 'id' | 'text'>>) => void;
+  onCompleteAddText: () => void;
 }
 
 export interface ComposerCanvasHandle {
@@ -20,7 +23,18 @@ export interface ComposerCanvasHandle {
 
 
 export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCanvasProps>(
-  ({ backgroundImage, texts, setTexts, selectedTextId, setSelectedTextId, canvasWidth, canvasHeight }, ref) => {
+  ({ 
+    backgroundImage, 
+    texts, 
+    setTexts, 
+    selectedTextId, 
+    setSelectedTextId, 
+    canvasWidth, 
+    canvasHeight,
+    pendingText,
+    onTextAdd,
+    onCompleteAddText,
+   }, ref) => {
     const internalCanvasRef = React.useRef<HTMLCanvasElement>(null);
     const containerRef = React.useRef<HTMLDivElement>(null);
 
@@ -164,7 +178,7 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
         if (canvasWidth > 0 && canvasHeight > 0) {
             initializeView();
         }
-    }, [canvasWidth, canvasHeight]); // Only run when canvas dimensions are first set
+    }, [initializeView, canvasWidth, canvasHeight]);
     
     React.useEffect(() => {
         const container = containerRef.current;
@@ -199,6 +213,12 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
       const { x, y, clientX, clientY } = getTransformedMousePos(e);
       const ctx = internalCanvasRef.current?.getContext('2d');
       if (!ctx) return;
+      
+      if (pendingText) {
+        onTextAdd(pendingText, { x, y });
+        onCompleteAddText();
+        return;
+      }
       
       let hit = false;
       for (let i = texts.length - 1; i >= 0; i--) {
@@ -310,11 +330,18 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
         }
     }, [handleWheel, handleMouseUp]);
 
+    const getCursorStyle = () => {
+      if (pendingText) return 'crosshair';
+      if (viewStateRef.current.isPanning || draggingState) return 'grabbing';
+      if (selectedTextId) return 'pointer';
+      return 'default';
+    }
+
     return (
       <div 
         ref={containerRef} 
         className="w-full h-full rounded-lg bg-card shadow-inner overflow-hidden flex justify-center items-center"
-        style={{ cursor: viewStateRef.current.isPanning ? 'grabbing' : 'default' }}
+        style={{ cursor: getCursorStyle() }}
       >
         <canvas
           ref={internalCanvasRef}
@@ -324,9 +351,7 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
           onTouchStart={handleMouseDown}
           onTouchMove={handleMouseMove}
           className="touch-none"
-          style={{
-            cursor: viewStateRef.current.isPanning ? 'grabbing' : (draggingState ? 'grabbing' : (selectedTextId ? 'pointer' : 'default')),
-          }}
+          style={{ cursor: getCursorStyle() }}
         />
       </div>
     );

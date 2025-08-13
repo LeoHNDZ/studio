@@ -27,6 +27,9 @@ export default function Home() {
   const [contacts, setContacts] = React.useState<Contact[]>([]);
   const canvasRef = React.useRef<ComposerCanvasHandle>(null);
   const { toast } = useToast();
+  
+  const [pendingText, setPendingText] = React.useState<string | null>(null);
+
 
   const [canvasWidth, setCanvasWidth] = React.useState<number>(0);
   const [canvasHeight, setCanvasHeight] = React.useState<number>(0);
@@ -94,8 +97,8 @@ export default function Home() {
     const newText: TextElement = {
       id: nanoid(),
       text,
-      x: canvas.width / 4,
-      y: canvas.height / 4,
+      x: options?.x || canvas.width / 4,
+      y: options?.y || canvas.height / 4,
       fontSize: 48,
       fontFamily: 'Inter',
       color: '#000000',
@@ -104,6 +107,12 @@ export default function Home() {
     setTexts((prev) => [...prev, newText]);
     setSelectedTextId(newText.id);
   };
+  
+  const startPlacingText = (text: string) => {
+    setPendingText(text);
+    setSelectedTextId(null);
+  };
+
 
   const updateText = (id: string, newProps: Partial<TextElement>) => {
     setTexts((prev) => prev.map((t) => (t.id === id ? { ...t, ...newProps } : t)));
@@ -148,7 +157,7 @@ export default function Home() {
     if (wasSelected) {
       setSelectedTextId(null);
     }
-  
+
     setTimeout(() => {
       const canvas = canvasRef.current?.getCanvas(withBackground);
       if (!canvas) {
@@ -159,7 +168,10 @@ export default function Home() {
       
       const dataUrl = canvas.toDataURL('image/png');
       const iframe = document.createElement('iframe');
-      iframe.style.display = 'none';
+      iframe.style.position = 'absolute';
+      iframe.style.width = '0';
+      iframe.style.height = '0';
+      iframe.style.border = 'none';
       document.body.appendChild(iframe);
   
       const iframeDoc = iframe.contentWindow?.document;
@@ -189,17 +201,23 @@ export default function Home() {
       iframeDoc.close();
   
       const printImage = iframe.contentWindow?.document.getElementById('print-image');
+      
+      const doPrint = () => {
+        iframe.contentWindow?.focus();
+        iframe.contentWindow?.print();
+        document.body.removeChild(iframe);
+        if (wasSelected) {
+          setSelectedTextId(wasSelected);
+        }
+      }
+
       if (printImage) {
         printImage.onload = () => {
-          iframe.contentWindow?.focus();
-          iframe.contentWindow?.print();
-          setTimeout(() => {
-            document.body.removeChild(iframe);
-            if (wasSelected) {
-              setSelectedTextId(wasSelected);
-            }
-          }, 100);
+          doPrint();
         };
+        if (printImage.complete) {
+          doPrint();
+        }
       } else {
         toast({ title: 'Error', description: 'Could not find print image in frame.', variant: 'destructive' });
         document.body.removeChild(iframe);
@@ -223,7 +241,7 @@ export default function Home() {
             <ComposerControls
               onClearBackground={clearBackgroundImage}
               onRestoreBackground={restoreBackgroundImage}
-              onAddText={addText}
+              onAddText={startPlacingText}
               selectedText={selectedText}
               onUpdateText={updateText}
               onDeleteText={deleteText}
@@ -232,6 +250,8 @@ export default function Home() {
               contacts={contacts}
               onAddContact={addContact}
               onDeleteContact={deleteContact}
+              isAddingText={!!pendingText}
+              onAddContactText={addText}
             />
           </SidebarContent>
         </Sidebar>
@@ -268,6 +288,9 @@ export default function Home() {
                 setSelectedTextId={setSelectedTextId}
                 canvasWidth={canvasWidth}
                 canvasHeight={canvasHeight}
+                pendingText={pendingText}
+                onTextAdd={addText}
+                onCompleteAddText={() => setPendingText(null)}
               />
             </main>
           </div>

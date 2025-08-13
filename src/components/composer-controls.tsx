@@ -38,6 +38,8 @@ interface ComposerControlsProps {
   contacts: Contact[];
   onAddContact: (name: string, details: string) => void;
   onDeleteContact: (id: string) => void;
+  isAddingText: boolean;
+  onAddContactText: (text: string) => void;
 }
 
 export function ComposerControls({
@@ -52,6 +54,8 @@ export function ComposerControls({
   contacts,
   onAddContact,
   onDeleteContact,
+  isAddingText,
+  onAddContactText,
 }: ComposerControlsProps) {
   const [newContactName, setNewContactName] = React.useState('');
   const [newContactDetails, setNewContactDetails] = React.useState('');
@@ -86,8 +90,8 @@ export function ComposerControls({
       <AccordionItem value="item-2">
         <AccordionTrigger className="px-4">Text Elements</AccordionTrigger>
         <AccordionContent className="px-4 space-y-4">
-          <Button className="w-full" onClick={() => onAddText('New Text')}>
-            <Plus className="mr-2 h-4 w-4" /> Add Text
+          <Button className="w-full" onClick={() => onAddText('New Text')} disabled={isAddingText}>
+            <Plus className="mr-2 h-4 w-4" /> {isAddingText ? 'Click on canvas to place...' : 'Add Text'}
           </Button>
           {selectedText ? (
             <Card>
@@ -125,7 +129,9 @@ export function ComposerControls({
               </CardContent>
             </Card>
           ) : (
-            <p className="text-sm text-muted-foreground text-center p-4">Select a text element to edit its properties.</p>
+            <p className="text-sm text-muted-foreground text-center p-4">
+              {isAddingText ? 'Click on the canvas to place your text.' : 'Select a text element to edit its properties.'}
+            </p>
           )}
         </AccordionContent>
       </AccordionItem>
