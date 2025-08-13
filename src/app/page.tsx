@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from 'react';
@@ -165,7 +166,7 @@ export default function Home() {
     const wasSelected = selectedTextId;
     setEditingTextId(null);
     setSelectedTextId(null);
-
+  
     setTimeout(() => {
       const canvas = canvasRef.current?.getCanvas(withBackground);
       if (!canvas) {
@@ -182,7 +183,7 @@ export default function Home() {
       iframe.style.border = 'none';
       iframe.style.top = '-9999px';
       iframe.style.left = '-9999px';
-
+  
       document.body.appendChild(iframe);
   
       const iframeDoc = iframe.contentWindow?.document;
@@ -211,28 +212,32 @@ export default function Home() {
       `);
       iframeDoc.close();
   
-      const printImage = iframe.contentWindow?.document.getElementById('print-image');
+      const printImage = iframe.contentWindow?.document.getElementById('print-image') as HTMLImageElement;
       
+      let printTriggered = false;
       const doPrint = () => {
+        if (printTriggered) return;
+        printTriggered = true;
+
         try {
           iframe.contentWindow?.focus();
           iframe.contentWindow?.print();
         } catch(e) {
            toast({ title: 'Error', description: 'Printing failed.', variant: 'destructive' });
         } finally {
-            document.body.removeChild(iframe);
+            if (iframe.parentElement) {
+                document.body.removeChild(iframe);
+            }
             if (wasSelected) {
               setSelectedTextId(wasSelected);
             }
         }
       }
-
+  
       if (printImage) {
-        printImage.onload = () => {
-          doPrint();
-        };
-        // Fallback for when onload doesn't fire
-        setTimeout(doPrint, 500);
+        printImage.onload = doPrint;
+        // Fallback for browsers that might not fire onload for data URIs consistently
+        setTimeout(doPrint, 500); 
       } else {
         toast({ title: 'Error', description: 'Could not find print image in frame.', variant: 'destructive' });
         document.body.removeChild(iframe);
@@ -318,3 +323,5 @@ export default function Home() {
     </>
   );
 }
+
+    
