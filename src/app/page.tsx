@@ -149,65 +149,71 @@ export default function Home() {
         return;
     }
     
-    // Use the full canvas data URL directly
-    const dataUrl = canvas.toDataURL('image/png');
-    
-    const printWindow = window.open('', '', `height=${canvas.height},width=${canvas.width}`);
-    
-    if (!printWindow) {
-        toast({
-            title: 'Error',
-            description: 'Could not open print window. Please disable popup blockers.',
-            variant: 'destructive',
-        });
-        return;
-    }
+    const currentSelectedId = selectedTextId;
+    setSelectedTextId(null);
 
-    if (withBackground) {
-        printWindow.document.write(`
-            <html>
-                <head><title>Print</title></head>
-                <body style="margin: 0;"><img src="${dataUrl}" style="width: 100%;"></body>
-            </html>
-        `);
-    } else {
-        const printCanvas = document.createElement('canvas');
-        printCanvas.width = canvas.width;
-        printCanvas.height = canvas.height;
-        const ctx = printCanvas.getContext('2d');
-        if (!ctx) {
-            toast({ title: 'Error', description: 'Could not create print context.', variant: 'destructive' });
+    setTimeout(() => {
+        const dataUrl = canvas.toDataURL('image/png');
+        
+        const printWindow = window.open('', '', `height=${canvas.height},width=${canvas.width}`);
+        
+        if (!printWindow) {
+            toast({
+                title: 'Error',
+                description: 'Could not open print window. Please disable popup blockers.',
+                variant: 'destructive',
+            });
+            setSelectedTextId(currentSelectedId);
             return;
         }
 
-        ctx.fillStyle = 'white';
-        ctx.fillRect(0, 0, printCanvas.width, printCanvas.height);
-        
-        texts.forEach(text => {
-            ctx.font = `${text.fontSize}px ${text.fontFamily}`;
-            ctx.fillStyle = text.color;
-            ctx.textAlign = 'left';
-            ctx.textBaseline = 'top';
-            ctx.fillText(text.text, text.x, text.y);
-        });
-        
-        const textOnlyDataUrl = printCanvas.toDataURL('image/png');
-        
-        printWindow.document.write(`
-            <html>
-                <head><title>Print</title></head>
-                <body style="margin: 0;"><img src="${textOnlyDataUrl}" style="width: 100%;"></body>
-            </html>
-        `);
-    }
+        if (withBackground) {
+            printWindow.document.write(`
+                <html>
+                    <head><title>Print</title></head>
+                    <body style="margin: 0;"><img src="${dataUrl}" style="width: 100%;"></body>
+                </html>
+            `);
+        } else {
+            const printCanvas = document.createElement('canvas');
+            printCanvas.width = canvas.width;
+            printCanvas.height = canvas.height;
+            const ctx = printCanvas.getContext('2d');
+            if (!ctx) {
+                toast({ title: 'Error', description: 'Could not create print context.', variant: 'destructive' });
+                setSelectedTextId(currentSelectedId);
+                return;
+            }
 
+            ctx.fillStyle = 'white';
+            ctx.fillRect(0, 0, printCanvas.width, printCanvas.height);
+            
+            texts.forEach(text => {
+                ctx.font = `${text.fontSize}px ${text.fontFamily}`;
+                ctx.fillStyle = text.color;
+                ctx.textAlign = 'left';
+                ctx.textBaseline = 'top';
+                ctx.fillText(text.text, text.x, text.y);
+            });
+            
+            const textOnlyDataUrl = printCanvas.toDataURL('image/png');
+            
+            printWindow.document.write(`
+                <html>
+                    <head><title>Print</title></head>
+                    <body style="margin: 0;"><img src="${textOnlyDataUrl}" style="width: 100%;"></body>
+                </html>
+            `);
+        }
 
-    printWindow.document.close();
-    printWindow.focus();
-    setTimeout(() => {
-        printWindow.print();
-        printWindow.close();
-    }, 250);
+        printWindow.document.close();
+        printWindow.focus();
+        setTimeout(() => {
+            printWindow.print();
+            printWindow.close();
+            setSelectedTextId(currentSelectedId);
+        }, 250);
+    }, 100);
   };
 
 
@@ -237,8 +243,8 @@ export default function Home() {
         </SidebarContent>
       </Sidebar>
       <SidebarInset>
-        <div className="h-full flex flex-col bg-background">
-          <header className="flex items-center justify-between p-2 border-b bg-card">
+        <div className="h-screen flex flex-col bg-background">
+          <header className="flex-shrink-0 flex items-center justify-between p-2 border-b bg-card">
             <SidebarTrigger />
             <div className="flex items-center gap-2">
               <Button variant="outline" size="sm" onClick={() => canvasRef.current?.resetView()}>
@@ -259,7 +265,7 @@ export default function Home() {
               </Button>
             </div>
           </header>
-          <main className="flex-1 p-4 overflow-auto">
+          <main className="flex-1 p-4 overflow-hidden">
             <ComposerCanvas
               ref={canvasRef}
               backgroundImage={backgroundImage}
