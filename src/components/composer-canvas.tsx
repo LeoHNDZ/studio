@@ -70,11 +70,11 @@ export const ComposerCanvas = React.forwardRef<HTMLCanvasElement, ComposerCanvas
         ctx.drawImage(backgroundImage, 0, 0, canvasWidth!, canvasHeight!);
       } else {
         ctx.save();
-        ctx.setTransform(1, 0, 0, 1, 0, 0);
         ctx.fillStyle = 'hsl(var(--muted-foreground))'
         ctx.font = '14px Inter';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
         ctx.fillText('No background image', containerWidth / 2, containerHeight / 2);
         ctx.restore();
       }
@@ -130,12 +130,12 @@ export const ComposerCanvas = React.forwardRef<HTMLCanvasElement, ComposerCanvas
             panStart: { x: 0, y: 0 },
         };
         redrawCanvas();
-    }, [redrawCanvas, canvasWidth, canvasHeight]);
+    }, [canvasWidth, canvasHeight, redrawCanvas]);
 
 
     React.useEffect(() => {
       resetView();
-    }, [backgroundImage, resetView]);
+    }, [resetView, backgroundImage]);
 
     React.useEffect(() => {
       redrawCanvas();
@@ -196,7 +196,7 @@ export const ComposerCanvas = React.forwardRef<HTMLCanvasElement, ComposerCanvas
       }
       if (!hit) {
         setSelectedTextId(null);
-        if (e.nativeEvent instanceof MouseEvent && e.nativeEvent.button === 1) { 
+        if (e.nativeEvent instanceof MouseEvent && (e.nativeEvent.button === 1 || e.nativeEvent.metaKey || e.nativeEvent.ctrlKey)) { 
              e.preventDefault();
              viewStateRef.current.isPanning = true;
              viewStateRef.current.panStart = { x: clientX, y: clientY };
