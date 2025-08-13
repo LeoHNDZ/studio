@@ -62,7 +62,7 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
         if (backgroundImage) {
             ctx.drawImage(backgroundImage, 0, 0, canvasWidth, canvasHeight);
         } else {
-            ctx.fillStyle = '#f3f4f6'; // light gray
+            ctx.fillStyle = '#f3f4f6';
             ctx.fillRect(0, 0, canvasWidth, canvasHeight);
         }
         
@@ -112,8 +112,7 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
         getCanvas: () => {
           const canvas = internalCanvasRef.current;
           if (!canvas) return null;
-
-          // Create a new canvas to export with original dimensions
+          
           const exportCanvas = document.createElement('canvas');
           exportCanvas.width = canvasWidth;
           exportCanvas.height = canvasHeight;
@@ -177,7 +176,7 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
             };
         }
         redrawCanvas();
-    }, [canvasWidth, canvasHeight, redrawCanvas]);
+    }, [canvasWidth, canvasHeight]);
 
 
     const getTransformedMousePos = (e: React.MouseEvent | React.TouchEvent | React.WheelEvent) => {
@@ -200,6 +199,7 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
     };
 
     const handleMouseDown = (e: React.MouseEvent | React.TouchEvent) => {
+      e.preventDefault();
       const { x, y, clientX, clientY } = getTransformedMousePos(e);
       const ctx = internalCanvasRef.current?.getContext('2d');
       if (!ctx) return;
@@ -221,21 +221,21 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
       }
       if (!hit) {
         setSelectedTextId(null);
-        if ((e.nativeEvent instanceof MouseEvent && (e.nativeEvent.button === 1 || e.nativeEvent.button === 2)) || e.nativeEvent.type === 'touchstart') { 
-             e.preventDefault();
-             viewStateRef.current.isPanning = true;
-             viewStateRef.current.panStart = { x: clientX - viewStateRef.current.pan.x, y: clientY - viewStateRef.current.pan.y };
-        }
+        viewStateRef.current.isPanning = true;
+        viewStateRef.current.panStart = { x: clientX, y: clientY };
       }
     };
 
     const handleMouseMove = (e: React.MouseEvent | React.TouchEvent) => {
+      e.preventDefault();
       const { x, y, clientX, clientY } = getTransformedMousePos(e);
 
       if (viewStateRef.current.isPanning) {
-        const panX = clientX - viewStateRef.current.panStart.x;
-        const panY = clientY - viewStateRef.current.panStart.y;
-        viewStateRef.current.pan = { x: panX, y: panY };
+        const { panStart, pan } = viewStateRef.current;
+        const dx = clientX - panStart.x;
+        const dy = clientY - panStart.y;
+        viewStateRef.current.pan = { x: pan.x + dx, y: pan.y + dy };
+        viewStateRef.current.panStart = { x: clientX, y: clientY };
         redrawCanvas();
         return;
       }
@@ -297,11 +297,13 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
         canvas.addEventListener('contextmenu', handleContextMenu);
         canvas.addEventListener('wheel', handleWheel, { passive: false });
         window.addEventListener('mouseup', handleMouseUp);
+        window.addEventListener('touchend', handleMouseUp);
         
         return () => {
             canvas.removeEventListener('contextmenu', handleContextMenu);
             canvas.removeEventListener('wheel', handleWheel);
             window.removeEventListener('mouseup', handleMouseUp);
+            window.removeEventListener('touchend', handleMouseUp);
         }
     }, [handleWheel, handleMouseUp]);
 
@@ -315,11 +317,9 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
           ref={internalCanvasRef}
           onMouseDown={handleMouseDown}
           onMouseMove={handleMouseMove}
-          onMouseUp={handleMouseUp}
           onMouseLeave={handleMouseUp}
           onTouchStart={handleMouseDown}
           onTouchMove={handleMouseMove}
-          onTouchEnd={handleMouseUp}
           className="touch-none"
           style={{
             cursor: viewStateRef.current.isPanning ? 'grabbing' : (draggingState ? 'grabbing' : (selectedTextId ? 'pointer' : 'default')),
@@ -330,3 +330,5 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
   }
 );
 ComposerCanvas.displayName = 'ComposerCanvas';
+
+    
