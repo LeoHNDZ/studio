@@ -26,6 +26,9 @@ export default function Home() {
   const canvasRef = React.useRef<HTMLCanvasElement>(null);
   const { toast } = useToast();
 
+  const [canvasWidth, setCanvasWidth] = React.useState<number | null>(null);
+  const [canvasHeight, setCanvasHeight] = React.useState<number | null>(null);
+
   React.useEffect(() => {
     try {
       const savedContacts = localStorage.getItem('contacts');
@@ -63,11 +66,8 @@ export default function Home() {
     reader.onload = (e) => {
       const img = new Image();
       img.onload = () => {
-        const canvas = canvasRef.current;
-        if (canvas) {
-          canvas.width = img.width;
-          canvas.height = img.height;
-        }
+        setCanvasWidth(img.width);
+        setCanvasHeight(img.height);
         setBackgroundImage(img);
         setClearedBackgroundImage(null); 
         setTexts([]);
@@ -80,11 +80,15 @@ export default function Home() {
   const clearBackgroundImage = () => {
     setClearedBackgroundImage(backgroundImage);
     setBackgroundImage(null);
+    setCanvasWidth(null);
+    setCanvasHeight(null);
   };
 
   const restoreBackgroundImage = () => {
     if (clearedBackgroundImage) {
       setBackgroundImage(clearedBackgroundImage);
+      setCanvasWidth(clearedBackgroundImage.width);
+      setCanvasHeight(clearedBackgroundImage.height);
       setClearedBackgroundImage(null);
     }
   };
@@ -144,7 +148,7 @@ export default function Home() {
       setSelectedTextId(currentSelectedId);
     }, 100); 
   };
-
+  
   const handlePrint = (withBackground = false) => {
     const canvas = canvasRef.current;
     if (!canvas) {
@@ -153,8 +157,11 @@ export default function Home() {
     }
 
     const printCanvas = document.createElement('canvas');
-    printCanvas.width = canvas.width;
-    printCanvas.height = canvas.height;
+    
+    const dpr = window.devicePixelRatio || 1;
+    printCanvas.width = canvas.width / dpr;
+    printCanvas.height = canvas.height / dpr;
+
     const ctx = printCanvas.getContext('2d');
 
     if (!ctx) {
@@ -162,11 +169,16 @@ export default function Home() {
         return;
     }
     
-    ctx.fillStyle = 'white';
-    ctx.fillRect(0, 0, printCanvas.width, printCanvas.height);
-
-    if (withBackground && backgroundImage) {
-        ctx.drawImage(backgroundImage, 0, 0, printCanvas.width, printCanvas.height);
+    if (withBackground) {
+        if(backgroundImage) {
+            ctx.drawImage(backgroundImage, 0, 0, printCanvas.width, printCanvas.height);
+        } else {
+            ctx.fillStyle = 'white';
+            ctx.fillRect(0, 0, printCanvas.width, printCanvas.height);
+        }
+    } else {
+      ctx.fillStyle = 'white';
+      ctx.fillRect(0, 0, printCanvas.width, printCanvas.height);
     }
     
     texts.forEach(text => {
@@ -178,7 +190,7 @@ export default function Home() {
     });
     
     const dataUrl = printCanvas.toDataURL('image/png');
-    const printWindow = window.open('', '', `height=${canvas.height},width=${canvas.width}`);
+    const printWindow = window.open('', '', `height=${printCanvas.height},width=${printCanvas.width}`);
     
     if (!printWindow) {
         toast({
@@ -195,7 +207,7 @@ export default function Home() {
                 <title>Print</title>
                 <style>
                     @page {
-                        size: ${canvas.width}px ${canvas.height}px;
+                        size: ${printCanvas.width}px ${printCanvas.height}px;
                         margin: 0;
                     }
                     body {
@@ -276,6 +288,8 @@ export default function Home() {
               setTexts={setTexts}
               selectedTextId={selectedTextId}
               setSelectedTextId={setSelectedTextId}
+              canvasWidth={canvasWidth}
+              canvasHeight={canvasHeight}
             />
           </main>
         </div>
