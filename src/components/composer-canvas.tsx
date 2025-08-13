@@ -185,9 +185,11 @@ export const ComposerCanvas = React.forwardRef<HTMLCanvasElement, ComposerCanvas
       );
     };
 
-    const handleMouseUp = () => {
-      setDraggingState(null);
-    };
+    const handleMouseUp = React.useCallback(() => {
+      if (draggingState) {
+        setDraggingState(null);
+      }
+    }, [draggingState]);
 
     const handleWheel = (e: React.WheelEvent) => {
         if (!e.shiftKey) return;
