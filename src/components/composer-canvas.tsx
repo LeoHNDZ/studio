@@ -101,10 +101,9 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
         const panY = (containerHeight - (canvasHeight * scale)) / 2;
         
         viewStateRef.current = {
+            ...viewStateRef.current,
             scale: scale,
             pan: { x: panX, y: panY },
-            isPanning: false,
-            panStart: { x: 0, y: 0 },
         };
         redrawCanvas();
     }, [canvasWidth, canvasHeight, redrawCanvas]);
@@ -234,10 +233,9 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
       const { x, y, clientX, clientY } = getTransformedMousePos(e);
 
       if (viewStateRef.current.isPanning) {
-        viewStateRef.current.pan = {
-          x: clientX - viewStateRef.current.panStart.x,
-          y: clientY - viewStateRef.current.panStart.y,
-        };
+        const panX = clientX - viewStateRef.current.panStart.x;
+        const panY = clientY - viewStateRef.current.panStart.y;
+        viewStateRef.current.pan = { x: panX, y: panY };
         redrawCanvas();
         return;
       }
