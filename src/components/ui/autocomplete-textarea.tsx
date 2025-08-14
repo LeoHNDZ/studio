@@ -1,24 +1,21 @@
 import * as React from "react"
 import { useAutocomplete } from "@/hooks/use-autocomplete"
-import { Input } from "./input"
+import { Textarea } from "./textarea"
 
-interface AutocompleteInputProps extends React.ComponentProps<typeof Input> {
-  /**
-   * A unique key used to persist suggestions in localStorage
-   */
+interface AutocompleteTextareaProps extends React.ComponentProps<typeof Textarea> {
   storageKey: string
 }
 
-export function AutocompleteInput({
+export function AutocompleteTextarea({
   storageKey,
   id,
   onBlur,
   ...props
-}: AutocompleteInputProps) {
+}: AutocompleteTextareaProps) {
   const listId = React.useMemo(() => `${id || storageKey}-list`, [id, storageKey])
   const { suggestions, addSuggestion } = useAutocomplete(storageKey)
 
-  const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+  const handleBlur = (e: React.FocusEvent<HTMLTextAreaElement>) => {
     onBlur?.(e)
     const value = e.target.value.trim()
     if (!value) return
@@ -27,7 +24,7 @@ export function AutocompleteInput({
 
   return (
     <>
-      <Input {...props} id={id} list={listId} onBlur={handleBlur} />
+      <Textarea {...props} id={id} list={listId} onBlur={handleBlur} />
       {suggestions.length > 0 && (
         <datalist id={listId}>
           {suggestions.map(s => (
