@@ -258,7 +258,13 @@ export default function EditPage({ params }: EditPageProps) {
         doc.open();
         doc.write(`
             <html>
-                <head><title>Print</title></head>
+                <head>
+                  <title>Print</title>
+                  <style>
+                    @page { margin: 0; }
+                    body { margin: 0; }
+                  </style>
+                </head>
                 <body style="margin: 0; padding: 0;">
                     <img src="${dataUrl}" onload="window.print()" style="background: transparent; max-width: 100%;"/>
                 </body>
