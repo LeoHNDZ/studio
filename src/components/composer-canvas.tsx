@@ -189,6 +189,8 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
           const ctx = exportCanvas.getContext('2d');
           if (!ctx) return null;
           
+          ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+
           if (withBackground && backgroundImage) {
               const imgAspectRatio = backgroundImage.width / backgroundImage.height;
               const canvasAspectRatio = canvasWidth / canvasHeight;
@@ -206,9 +208,6 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
                   x = (canvasWidth - drawWidth) / 2;
               }
               ctx.drawImage(backgroundImage, x, y, drawWidth, drawHeight);
-          } else {
-              ctx.fillStyle = 'white';
-              ctx.fillRect(0, 0, canvasWidth, canvasHeight);
           }
 
 

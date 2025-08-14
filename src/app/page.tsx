@@ -9,9 +9,6 @@ import { useRouter } from 'next/navigation';
 import { nanoid } from 'nanoid';
 import { CompositionList } from '@/components/composition-list';
 
-const DEFAULT_WIDTH = 1200;
-const DEFAULT_HEIGHT = 630;
-
 const defaultComposition = (width: number, height: number): Composition => ({
   id: nanoid(),
   name: 'Untitled Composition',
@@ -41,11 +38,23 @@ export default function DashboardPage() {
   }, []);
 
   const createNewComposition = () => {
-    const newComp = defaultComposition(DEFAULT_WIDTH, DEFAULT_HEIGHT);
-    const updatedCompositions = [...compositions, newComp];
-    localStorage.setItem('compositions', JSON.stringify(updatedCompositions));
-    setCompositions(updatedCompositions);
-    router.push(`/edit/${newComp.id}`);
+    const img = new Image();
+    img.src = '/Ticket.png';
+    img.onload = () => {
+      const newComp = defaultComposition(img.width, img.height);
+      const updatedCompositions = [...compositions, newComp];
+      localStorage.setItem('compositions', JSON.stringify(updatedCompositions));
+      setCompositions(updatedCompositions);
+      router.push(`/edit/${newComp.id}`);
+    };
+    img.onerror = () => {
+      // Fallback to default size if image fails to load
+      const newComp = defaultComposition(1200, 630);
+      const updatedCompositions = [...compositions, newComp];
+      localStorage.setItem('compositions', JSON.stringify(updatedCompositions));
+      setCompositions(updatedCompositions);
+      router.push(`/edit/${newComp.id}`);
+    }
   };
 
   const deleteComposition = (id: string) => {
