@@ -65,6 +65,24 @@ export default function DashboardPage() {
     localStorage.setItem('tickets', JSON.stringify(updatedTickets));
     setTickets(updatedTickets);
   };
+
+  const duplicateTicket = (id: string) => {
+    const ticketToCopy = tickets.find(t => t.id === id);
+    if (!ticketToCopy) return;
+
+    const newTicket: Ticket = {
+      ...ticketToCopy,
+      id: nanoid(),
+      name: `Copy of ${ticketToCopy.name}`,
+      createdAt: Date.now(),
+    };
+
+    const updatedTickets = [...tickets, newTicket];
+    localStorage.setItem('tickets', JSON.stringify(updatedTickets));
+    setTickets(updatedTickets);
+
+    window.open(`/edit/${newTicket.id}`, '_blank');
+  };
   
   const updateTicket = (id: string, updates: Partial<Ticket>) => {
     const updatedTickets = tickets.map(t => t.id === id ? {...t, ...updates} : t);
@@ -88,6 +106,7 @@ export default function DashboardPage() {
         <TicketList 
             tickets={tickets} 
             onDelete={deleteTicket}
+            onDuplicate={duplicateTicket}
         />
       </main>
     </div>
