@@ -16,6 +16,7 @@ const defaultComposition = (width: number, height: number): Composition => ({
   texts: [],
   canvasWidth: width,
   canvasHeight: height,
+  createdAt: Date.now(),
 });
 
 export default function DashboardPage() {
@@ -28,7 +29,9 @@ export default function DashboardPage() {
       if (savedCompositions) {
         const parsedComps = JSON.parse(savedCompositions);
         if (Array.isArray(parsedComps)) {
-          setCompositions(parsedComps);
+          // Add createdAt if it's missing for backward compatibility
+          const compsWithDate = parsedComps.map(c => ({...c, createdAt: c.createdAt || Date.now()}));
+          setCompositions(compsWithDate);
           return;
         }
       }
@@ -85,7 +88,6 @@ export default function DashboardPage() {
         <CompositionList 
             compositions={compositions} 
             onDelete={deleteComposition}
-            onUpdate={updateComposition}
         />
       </main>
     </div>

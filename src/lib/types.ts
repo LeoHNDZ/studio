@@ -23,4 +23,5 @@ export type Composition = {
   texts: TextElement[];
   canvasWidth: number;
   canvasHeight: number;
+  createdAt: number;
 };
