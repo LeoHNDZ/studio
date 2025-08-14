@@ -2,7 +2,7 @@
 "use client";
 
 import * as React from 'react';
-import type { TextElement, Contact, Composition } from '@/lib/types';
+import type { TextElement, Contact, Ticket } from '@/lib/types';
 import {
   Accordion,
   AccordionContent,
@@ -42,8 +42,8 @@ interface ComposerControlsProps {
   onDeleteContact: (id: string) => void;
   isAddingText: boolean;
   onAddContactText: (text: string) => void;
-  activeComposition: Composition | null | undefined;
-  onUpdateActiveComposition: (updates: Partial<Composition>) => void;
+  activeTicket: Ticket | null | undefined;
+  onUpdateActiveTicket: (updates: Partial<Ticket>) => void;
 }
 
 export function ComposerControls({
@@ -59,8 +59,8 @@ export function ComposerControls({
   onDeleteContact,
   isAddingText,
   onAddContactText,
-  activeComposition,
-  onUpdateActiveComposition,
+  activeTicket,
+  onUpdateActiveTicket,
 }: ComposerControlsProps) {
   const [newContactName, setNewContactName] = React.useState('');
   const [newContactDetails, setNewContactDetails] = React.useState('');
@@ -100,15 +100,15 @@ export function ComposerControls({
   return (
     <Accordion type="multiple" defaultValue={['item-1', 'item-2', 'item-3', 'item-4']} className="w-full">
       <AccordionItem value="item-1">
-        <AccordionTrigger className="px-4">Composition</AccordionTrigger>
+        <AccordionTrigger className="px-4">Ticket</AccordionTrigger>
         <AccordionContent className="px-4 space-y-2">
-          {activeComposition && (
+          {activeTicket && (
             <div className="space-y-2">
-              <Label htmlFor="composition-name">Name</Label>
+              <Label htmlFor="ticket-name">Name</Label>
               <Input
-                id="composition-name"
-                value={activeComposition.name}
-                onChange={(e) => onUpdateActiveComposition({ name: e.target.value })}
+                id="ticket-name"
+                value={activeTicket.name}
+                onChange={(e) => onUpdateActiveTicket({ name: e.target.value })}
                 className="w-full"
               />
             </div>
@@ -275,3 +275,5 @@ export function ComposerControls({
     </Accordion>
   );
 }
+
+    

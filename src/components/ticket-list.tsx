@@ -2,7 +2,7 @@
 "use client";
 
 import * as React from 'react';
-import type { Composition } from '@/lib/types';
+import type { Ticket } from '@/lib/types';
 import Link from 'next/link';
 import { Button } from './ui/button';
 import { Trash2, Edit, ArrowUpDown } from 'lucide-react';
@@ -36,19 +36,19 @@ import {
 type SortKey = 'name' | 'createdAt';
 type SortDirection = 'asc' | 'desc';
 
-interface CompositionListProps {
-  compositions: Composition[];
+interface TicketListProps {
+  tickets: Ticket[];
   onDelete: (id: string) => void;
 }
 
-export function CompositionList({ compositions, onDelete }: CompositionListProps) {
+export function TicketList({ tickets, onDelete }: TicketListProps) {
   const [searchTerm, setSearchTerm] = React.useState('');
   const [sortKey, setSortKey] = React.useState<SortKey>('createdAt');
   const [sortDirection, setSortDirection] = React.useState<SortDirection>('desc');
 
-  const sortedAndFilteredCompositions = React.useMemo(() => {
-    return compositions
-      .filter(comp => comp.name.toLowerCase().includes(searchTerm.toLowerCase()))
+  const sortedAndFilteredTickets = React.useMemo(() => {
+    return tickets
+      .filter(ticket => ticket.name.toLowerCase().includes(searchTerm.toLowerCase()))
       .sort((a, b) => {
         const aValue = a[sortKey];
         const bValue = b[sortKey];
@@ -61,7 +61,7 @@ export function CompositionList({ compositions, onDelete }: CompositionListProps
         }
         return 0;
       });
-  }, [compositions, searchTerm, sortKey, sortDirection]);
+  }, [tickets, searchTerm, sortKey, sortDirection]);
 
   const handleSort = (key: SortKey) => {
     if (sortKey === key) {
@@ -72,11 +72,11 @@ export function CompositionList({ compositions, onDelete }: CompositionListProps
     }
   };
 
-  if (compositions.length === 0) {
+  if (tickets.length === 0) {
     return (
       <div className="text-center py-16">
-        <h2 className="text-xl font-semibold">No compositions yet</h2>
-        <p className="text-muted-foreground mt-2">Click "New Composition" to get started.</p>
+        <h2 className="text-xl font-semibold">No tickets yet</h2>
+        <p className="text-muted-foreground mt-2">Click "New Ticket" to get started.</p>
       </div>
     );
   }
@@ -85,7 +85,7 @@ export function CompositionList({ compositions, onDelete }: CompositionListProps
     <div className="space-y-4">
         <div className="flex justify-between items-center gap-4">
             <Input 
-                placeholder="Search compositions..."
+                placeholder="Search tickets..."
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
                 className="max-w-sm"
@@ -122,14 +122,14 @@ export function CompositionList({ compositions, onDelete }: CompositionListProps
                 </TableRow>
             </TableHeader>
             <TableBody>
-                {sortedAndFilteredCompositions.map(comp => (
-                    <TableRow key={comp.id}>
-                        <TableCell className="font-medium">{comp.name}</TableCell>
-                        <TableCell>{comp.texts.length}</TableCell>
-                        <TableCell>{new Date(comp.createdAt).toLocaleDateString()}</TableCell>
+                {sortedAndFilteredTickets.map(ticket => (
+                    <TableRow key={ticket.id}>
+                        <TableCell className="font-medium">{ticket.name}</TableCell>
+                        <TableCell>{ticket.texts.length}</TableCell>
+                        <TableCell>{new Date(ticket.createdAt).toLocaleDateString()}</TableCell>
                         <TableCell className="text-right">
                              <div className='flex items-center justify-end gap-2'>
-                                <Link href={`/edit/${comp.id}`} passHref>
+                                <Link href={`/edit/${ticket.id}`} passHref>
                                     <Button variant="outline" size="sm">
                                         <Edit className="mr-2 h-4 w-4"/>
                                         Edit
@@ -145,12 +145,12 @@ export function CompositionList({ compositions, onDelete }: CompositionListProps
                                     <AlertDialogHeader>
                                     <AlertDialogTitle>Are you sure?</AlertDialogTitle>
                                     <AlertDialogDescription>
-                                        This will permanently delete the composition "{comp.name}". This action cannot be undone.
+                                        This will permanently delete the ticket "{ticket.name}". This action cannot be undone.
                                     </AlertDialogDescription>
                                     </AlertDialogHeader>
                                     <AlertDialogFooter>
                                     <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                    <AlertDialogAction onClick={() => onDelete(comp.id)}>Delete</AlertDialogAction>
+                                    <AlertDialogAction onClick={() => onDelete(ticket.id)}>Delete</AlertDialogAction>
                                     </AlertDialogFooter>
                                 </AlertDialogContent>
                                 </AlertDialog>
@@ -161,9 +161,9 @@ export function CompositionList({ compositions, onDelete }: CompositionListProps
             </TableBody>
         </Table>
         </div>
-        {sortedAndFilteredCompositions.length === 0 && searchTerm && (
+        {sortedAndFilteredTickets.length === 0 && searchTerm && (
              <div className="text-center py-16">
-                <h2 className="text-xl font-semibold">No compositions found</h2>
+                <h2 className="text-xl font-semibold">No tickets found</h2>
                 <p className="text-muted-foreground mt-2">Try a different search term.</p>
             </div>
         )}

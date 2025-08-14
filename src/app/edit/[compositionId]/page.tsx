@@ -2,7 +2,7 @@
 "use client";
 
 import * as React from 'react';
-import type { TextElement, Contact, Composition } from '@/lib/types';
+import type { TextElement, Contact, Ticket } from '@/lib/types';
 import {
   Sidebar,
   SidebarContent,
@@ -27,10 +27,10 @@ interface EditPageProps {
 }
 
 export default function EditPage({ params }: EditPageProps) {
-  const { compositionId } = params;
+  const { compositionId: ticketId } = params;
   const router = useRouter();
 
-  const [composition, setComposition] = React.useState<Composition | null>(null);
+  const [ticket, setTicket] = React.useState<Ticket | null>(null);
   const [backgroundImage, setBackgroundImage] = React.useState<HTMLImageElement | null>(null);
   
   const [selectedTextId, setSelectedTextId] = React.useState<string | null>(null);
@@ -42,56 +42,56 @@ export default function EditPage({ params }: EditPageProps) {
   const [pendingText, setPendingText] = React.useState<string | null>(null);
 
   React.useEffect(() => {
-    if (!compositionId) return;
+    if (!ticketId) return;
 
     try {
-      const savedCompositions = localStorage.getItem('compositions');
-      if (savedCompositions) {
-        const parsedComps = JSON.parse(savedCompositions) as Composition[];
-        const currentComp = parsedComps.find(c => c.id === compositionId);
-        if (currentComp) {
-          setComposition(currentComp);
+      const savedTickets = localStorage.getItem('tickets');
+      if (savedTickets) {
+        const parsedTickets = JSON.parse(savedTickets) as Ticket[];
+        const currentTicket = parsedTickets.find(t => t.id === ticketId);
+        if (currentTicket) {
+          setTicket(currentTicket);
         } else {
-          toast({ title: "Error", description: "Composition not found.", variant: 'destructive' });
+          toast({ title: "Error", description: "Ticket not found.", variant: 'destructive' });
           router.push('/');
         }
       } else {
          router.push('/');
       }
     } catch (error) {
-      console.error("Failed to load composition from localStorage", error);
+      console.error("Failed to load ticket from localStorage", error);
       router.push('/');
     }
-  }, [compositionId, router, toast]);
+  }, [ticketId, router, toast]);
 
   React.useEffect(() => {
-    if (composition && composition.backgroundImageUrl) {
+    if (ticket && ticket.backgroundImageUrl) {
       const img = new Image();
       img.crossOrigin = "anonymous";
-      img.src = composition.backgroundImageUrl;
+      img.src = ticket.backgroundImageUrl;
       img.onload = () => setBackgroundImage(img);
     } else {
       setBackgroundImage(null);
     }
-  }, [composition?.backgroundImageUrl]);
+  }, [ticket?.backgroundImageUrl]);
 
 
-  // Effect to save the current composition to localStorage
+  // Effect to save the current ticket to localStorage
   React.useEffect(() => {
-    if (composition) {
+    if (ticket) {
        try {
-        const savedCompositions = localStorage.getItem('compositions');
-        const comps = savedCompositions ? (JSON.parse(savedCompositions) as Composition[]) : [];
-        const updatedComps = comps.map(c => c.id === composition.id ? composition : c);
-        if (!updatedComps.some(c => c.id === composition.id)) {
-            updatedComps.push(composition);
+        const savedTickets = localStorage.getItem('tickets');
+        const tickets = savedTickets ? (JSON.parse(savedTickets) as Ticket[]) : [];
+        const updatedTickets = tickets.map(t => t.id === ticket.id ? ticket : t);
+        if (!updatedTickets.some(t => t.id === ticket.id)) {
+            updatedTickets.push(ticket);
         }
-        localStorage.setItem('compositions', JSON.stringify(updatedComps));
+        localStorage.setItem('tickets', JSON.stringify(updatedTickets));
       } catch (error) {
-        console.error("Failed to save composition", error);
+        console.error("Failed to save ticket", error);
       }
     }
-  }, [composition]);
+  }, [ticket]);
 
   // Load contacts
   React.useEffect(() => {
@@ -105,15 +105,15 @@ export default function EditPage({ params }: EditPageProps) {
     }
   }, []);
 
-  const updateComposition = (updates: Partial<Composition>) => {
-    if (!composition) return;
-    setComposition(comp => comp ? { ...comp, ...updates } : null);
+  const updateTicket = (updates: Partial<Ticket>) => {
+    if (!ticket) return;
+    setTicket(t => t ? { ...t, ...updates } : null);
   };
   
   const setTexts = (newTexts: TextElement[] | ((prev: TextElement[])=>TextElement[])) => {
-      if(!composition) return;
-      const updatedTexts = typeof newTexts === 'function' ? newTexts(composition.texts) : newTexts;
-      updateComposition({ texts: updatedTexts });
+      if(!ticket) return;
+      const updatedTexts = typeof newTexts === 'function' ? newTexts(ticket.texts) : newTexts;
+      updateTicket({ texts: updatedTexts });
   }
 
   const saveContacts = (updatedContacts: Contact[]) => {
@@ -137,15 +137,15 @@ export default function EditPage({ params }: EditPageProps) {
   };
   
   const clearBackgroundImage = () => {
-    updateComposition({ backgroundImageUrl: null });
+    updateTicket({ backgroundImageUrl: null });
   };
   
   const handleRestoreBackground = () => {
-    updateComposition({ backgroundImageUrl: '/Ticket.png' });
+    updateTicket({ backgroundImageUrl: '/Ticket.png' });
   };
 
   const addText = (text: string, options?: Partial<Omit<TextElement, 'id' | 'text'>>) => {
-    if (!composition) return;
+    if (!ticket) return;
     const canvas = canvasRef.current?.getCanvas();
     if (!canvas) return;
     
@@ -160,8 +160,8 @@ export default function EditPage({ params }: EditPageProps) {
       ...options,
     };
     
-    const newTexts = [...composition.texts, newText];
-    updateComposition({ texts: newTexts });
+    const newTexts = [...ticket.texts, newText];
+    updateTicket({ texts: newTexts });
     setSelectedTextId(newText.id);
   };
   
@@ -172,15 +172,15 @@ export default function EditPage({ params }: EditPageProps) {
 
 
   const updateText = (id: string, newProps: Partial<TextElement>) => {
-    if (!composition) return;
-    const newTexts = composition.texts.map((t) => (t.id === id ? { ...t, ...newProps } : t));
-    updateComposition({ texts: newTexts });
+    if (!ticket) return;
+    const newTexts = ticket.texts.map((t) => (t.id === id ? { ...t, ...newProps } : t));
+    updateTicket({ texts: newTexts });
   };
 
   const deleteText = (id: string) => {
-    if (!composition) return;
-    const newTexts = composition.texts.filter((t) => t.id !== id);
-    updateComposition({ texts: newTexts });
+    if (!ticket) return;
+    const newTexts = ticket.texts.filter((t) => t.id !== id);
+    updateTicket({ texts: newTexts });
 
     if (selectedTextId === id) {
       setSelectedTextId(null);
@@ -191,12 +191,12 @@ export default function EditPage({ params }: EditPageProps) {
   }
 
   const selectedText = React.useMemo(() => {
-    return composition?.texts.find((t) => t.id === selectedTextId) || null;
-  }, [composition, selectedTextId]);
+    return ticket?.texts.find((t) => t.id === selectedTextId) || null;
+  }, [ticket, selectedTextId]);
 
   const editingText = React.useMemo(() => {
-    return composition?.texts.find((t) => t.id === editingTextId) || null;
-  }, [composition, editingTextId]);
+    return ticket?.texts.find((t) => t.id === editingTextId) || null;
+  }, [ticket, editingTextId]);
 
   const handleExport = () => {
     const canvas = canvasRef.current?.getCanvas();
@@ -216,7 +216,7 @@ export default function EditPage({ params }: EditPageProps) {
     setTimeout(() => {
       const dataUrl = canvas.toDataURL('image/png');
       const link = document.createElement('a');
-      link.download = `${composition?.name || 'composition'}.png`;
+      link.download = `${ticket?.name || 'ticket'}.png`;
       link.href = dataUrl;
       link.click();
       
@@ -296,10 +296,10 @@ export default function EditPage({ params }: EditPageProps) {
 };
 
   
-  if (!composition) {
+  if (!ticket) {
     return (
       <div className="h-screen w-screen flex items-center justify-center">
-          <p>Loading composition...</p>
+          <p>Loading ticket...</p>
       </div>
     );
   }
@@ -314,7 +314,7 @@ export default function EditPage({ params }: EditPageProps) {
                  <Button variant="ghost" size="icon"><ArrowLeft /></Button>
                </Link>
               <TextQuoteIcon className="w-6 h-6 text-primary-foreground" />
-              <h1 className="text-xl font-semibold font-headline">ImageComposer</h1>
+              <h1 className="text-xl font-semibold font-headline">TicketComposer</h1>
             </div>
           </SidebarHeader>
           <SidebarContent className="p-0">
@@ -325,14 +325,14 @@ export default function EditPage({ params }: EditPageProps) {
               selectedText={selectedText}
               onUpdateText={updateText}
               onDeleteText={deleteText}
-              hasBackgroundImage={!!composition.backgroundImageUrl}
+              hasBackgroundImage={!!ticket.backgroundImageUrl}
               contacts={contacts}
               onAddContact={addContact}
               onDeleteContact={deleteContact}
               isAddingText={!!pendingText}
               onAddContactText={addText}
-              activeComposition={composition}
-              onUpdateActiveComposition={updateComposition}
+              activeTicket={ticket}
+              onUpdateActiveTicket={updateTicket}
             />
           </SidebarContent>
         </Sidebar>
@@ -363,7 +363,7 @@ export default function EditPage({ params }: EditPageProps) {
               <ComposerCanvas
                 ref={canvasRef}
                 backgroundImage={backgroundImage}
-                texts={composition.texts}
+                texts={ticket.texts}
                 setTexts={(newTexts) => setTexts(newTexts)}
                 selectedTextId={selectedTextId}
                 setSelectedTextId={setSelectedTextId}
@@ -372,8 +372,8 @@ export default function EditPage({ params }: EditPageProps) {
                 setEditingTextId={setEditingTextId}
                 onUpdateText={updateText}
                 onDeleteText={deleteText}
-                canvasWidth={composition.canvasWidth}
-                canvasHeight={composition.canvasHeight}
+                canvasWidth={ticket.canvasWidth}
+                canvasHeight={ticket.canvasHeight}
                 pendingText={pendingText}
                 onTextAdd={addText}
                 onCompleteAddText={() => setPendingText(null)}
@@ -385,3 +385,5 @@ export default function EditPage({ params }: EditPageProps) {
     </>
   );
 }
+
+    

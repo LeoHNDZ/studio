@@ -2,16 +2,16 @@
 "use client";
 
 import * as React from 'react';
-import type { Composition } from '@/lib/types';
+import type { Ticket } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { nanoid } from 'nanoid';
-import { CompositionList } from '@/components/composition-list';
+import { TicketList } from '@/components/ticket-list';
 
-const defaultComposition = (width: number, height: number): Composition => ({
+const defaultTicket = (width: number, height: number): Ticket => ({
   id: nanoid(),
-  name: 'Untitled Composition',
+  name: 'Untitled Ticket',
   backgroundImageUrl: '/Ticket.png',
   texts: [],
   canvasWidth: width,
@@ -20,56 +20,56 @@ const defaultComposition = (width: number, height: number): Composition => ({
 });
 
 export default function DashboardPage() {
-  const [compositions, setCompositions] = React.useState<Composition[]>([]);
+  const [tickets, setTickets] = React.useState<Ticket[]>([]);
   const router = useRouter();
 
   React.useEffect(() => {
     try {
-      const savedCompositions = localStorage.getItem('compositions');
-      if (savedCompositions) {
-        const parsedComps = JSON.parse(savedCompositions);
-        if (Array.isArray(parsedComps)) {
+      const savedTickets = localStorage.getItem('tickets');
+      if (savedTickets) {
+        const parsedTickets = JSON.parse(savedTickets);
+        if (Array.isArray(parsedTickets)) {
           // Add createdAt if it's missing for backward compatibility
-          const compsWithDate = parsedComps.map(c => ({...c, createdAt: c.createdAt || Date.now()}));
-          setCompositions(compsWithDate);
+          const ticketsWithDate = parsedTickets.map(t => ({...t, createdAt: t.createdAt || Date.now()}));
+          setTickets(ticketsWithDate);
           return;
         }
       }
     } catch (error) {
-      console.error("Failed to load compositions from localStorage", error);
+      console.error("Failed to load tickets from localStorage", error);
     }
   }, []);
 
-  const createNewComposition = () => {
+  const createNewTicket = () => {
     const img = new Image();
     img.src = '/Ticket.png';
     img.onload = () => {
-      const newComp = defaultComposition(img.width, img.height);
-      const updatedCompositions = [...compositions, newComp];
-      localStorage.setItem('compositions', JSON.stringify(updatedCompositions));
-      setCompositions(updatedCompositions);
-      router.push(`/edit/${newComp.id}`);
+      const newTicket = defaultTicket(img.width, img.height);
+      const updatedTickets = [...tickets, newTicket];
+      localStorage.setItem('tickets', JSON.stringify(updatedTickets));
+      setTickets(updatedTickets);
+      router.push(`/edit/${newTicket.id}`);
     };
     img.onerror = () => {
       // Fallback to default size if image fails to load
-      const newComp = defaultComposition(1200, 630);
-      const updatedCompositions = [...compositions, newComp];
-      localStorage.setItem('compositions', JSON.stringify(updatedCompositions));
-      setCompositions(updatedCompositions);
-      router.push(`/edit/${newComp.id}`);
+      const newTicket = defaultTicket(1200, 630);
+      const updatedTickets = [...tickets, newTicket];
+      localStorage.setItem('tickets', JSON.stringify(updatedTickets));
+      setTickets(updatedTickets);
+      router.push(`/edit/${newTicket.id}`);
     }
   };
 
-  const deleteComposition = (id: string) => {
-    const updatedCompositions = compositions.filter(c => c.id !== id);
-    localStorage.setItem('compositions', JSON.stringify(updatedCompositions));
-    setCompositions(updatedCompositions);
+  const deleteTicket = (id: string) => {
+    const updatedTickets = tickets.filter(t => t.id !== id);
+    localStorage.setItem('tickets', JSON.stringify(updatedTickets));
+    setTickets(updatedTickets);
   };
   
-  const updateComposition = (id: string, updates: Partial<Composition>) => {
-    const updatedCompositions = compositions.map(c => c.id === id ? {...c, ...updates} : c);
-    localStorage.setItem('compositions', JSON.stringify(updatedCompositions));
-    setCompositions(updatedCompositions);
+  const updateTicket = (id: string, updates: Partial<Ticket>) => {
+    const updatedTickets = tickets.map(t => t.id === id ? {...t, ...updates} : t);
+    localStorage.setItem('tickets', JSON.stringify(updatedTickets));
+    setTickets(updatedTickets);
   };
 
 
@@ -77,19 +77,21 @@ export default function DashboardPage() {
     <div className="min-h-screen bg-background text-foreground">
       <header className="p-4 border-b bg-card">
         <div className="container mx-auto flex justify-between items-center">
-          <h1 className="text-2xl font-bold">ImageCompositions</h1>
-          <Button onClick={createNewComposition}>
+          <h1 className="text-2xl font-bold">TicketCompositions</h1>
+          <Button onClick={createNewTicket}>
             <Plus className="mr-2 h-4 w-4" />
-            New Composition
+            New Ticket
           </Button>
         </div>
       </header>
       <main className="container mx-auto p-4">
-        <CompositionList 
-            compositions={compositions} 
-            onDelete={deleteComposition}
+        <TicketList 
+            tickets={tickets} 
+            onDelete={deleteTicket}
         />
       </main>
     </div>
   );
 }
+
+    

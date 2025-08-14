@@ -16,7 +16,7 @@ export type Contact = {
   details: string;
 };
 
-export type Composition = {
+export type Ticket = {
   id: string;
   name: string;
   backgroundImageUrl: string | null;
@@ -25,3 +25,5 @@ export type Composition = {
   canvasHeight: number;
   createdAt: number;
 };
+
+    
