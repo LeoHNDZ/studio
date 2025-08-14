@@ -3,7 +3,7 @@
 'use server';
 
 /**
- * @fileOverview This file defines a Genkit flow for suggesting quotes based on a given topic.
+ * @fileoverview This file defines a Genkit flow for suggesting quotes based on a given topic.
  *
  * - `suggestQuote` - An exported function that takes a topic as input and returns a suggested quote.
  * - `SuggestQuoteInput` - The input type for the `suggestQuote` function, which is a string representing the topic.
