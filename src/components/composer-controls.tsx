@@ -22,7 +22,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, Trash2, X, UserPlus, BookUser, Check, FilePlus } from 'lucide-react';
+import { Plus, Trash2, X, UserPlus, BookUser, Check, FilePlus, RefreshCcw } from 'lucide-react';
 import { Card, CardContent } from './ui/card';
 import { ScrollArea } from './ui/scroll-area';
 import { cn } from '@/lib/utils';
@@ -31,6 +31,7 @@ import { useToast } from '@/hooks/use-toast';
 
 interface ComposerControlsProps {
   onClearBackground: () => void;
+  onRestoreBackground: () => void;
   onAddText: (text: string) => void;
   selectedText: TextElement | null;
   onUpdateText: (id: string, newProps: Partial<TextElement>) => void;
@@ -47,6 +48,7 @@ interface ComposerControlsProps {
 
 export function ComposerControls({
   onClearBackground,
+  onRestoreBackground,
   onAddText,
   selectedText,
   onUpdateText,
@@ -116,9 +118,13 @@ export function ComposerControls({
       <AccordionItem value="item-2">
         <AccordionTrigger className="px-4">Background</AccordionTrigger>
         <AccordionContent className="px-4 space-y-2">
-          {hasBackgroundImage && (
+          {hasBackgroundImage ? (
              <Button variant="outline" className="w-full" onClick={onClearBackground}>
                 <X className="mr-2 h-4 w-4" /> Clear Background
+            </Button>
+          ) : (
+            <Button variant="outline" className="w-full" onClick={onRestoreBackground}>
+                <RefreshCcw className="mr-2 h-4 w-4" /> Restore Background
             </Button>
           )}
         </AccordionContent>

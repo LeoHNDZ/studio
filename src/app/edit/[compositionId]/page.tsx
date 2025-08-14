@@ -67,6 +67,7 @@ export default function EditPage({ params }: EditPageProps) {
   React.useEffect(() => {
     if (composition && composition.backgroundImageUrl) {
       const img = new Image();
+      img.crossOrigin = "anonymous";
       img.src = composition.backgroundImageUrl;
       img.onload = () => setBackgroundImage(img);
     } else {
@@ -139,6 +140,10 @@ export default function EditPage({ params }: EditPageProps) {
     updateComposition({ backgroundImageUrl: null });
   };
   
+  const handleRestoreBackground = () => {
+    updateComposition({ backgroundImageUrl: '/Ticket.png' });
+  };
+
   const addText = (text: string, options?: Partial<Omit<TextElement, 'id' | 'text'>>) => {
     if (!composition) return;
     const canvas = canvasRef.current?.getCanvas();
@@ -225,63 +230,71 @@ export default function EditPage({ params }: EditPageProps) {
     setEditingTextId(null);
 
     setTimeout(() => {
-      const canvas = canvasRef.current?.getCanvas(withBackground);
-      if (!canvas) {
-        toast({ title: 'Error', description: 'Could not generate print image.', variant: 'destructive' });
-        if (wasSelected) setSelectedTextId(wasSelected);
-        return;
-      }
-      
-      const dataUrl = canvas.toDataURL('image/png');
-      const iframe = document.createElement('iframe');
-      
-      iframe.style.position = 'fixed';
-      iframe.style.width = '0';
-      iframe.style.height = '0';
-      iframe.style.border = 'none';
-      
-      document.body.appendChild(iframe);
-      
-      const doc = iframe.contentWindow?.document;
-      if (!doc) {
-          document.body.removeChild(iframe);
-          toast({ title: 'Error', description: 'Could not print.', variant: 'destructive' });
-          if(wasSelected) setSelectedTextId(wasSelected);
-          return;
-      }
+        const canvas = canvasRef.current?.getCanvas(withBackground);
+        if (!canvas) {
+            toast({ title: 'Error', description: 'Could not generate print image.', variant: 'destructive' });
+            if (wasSelected) setSelectedTextId(wasSelected);
+            return;
+        }
 
-      doc.open();
-      doc.write(`
-        <html>
-          <head>
-            <title>Print</title>
-            <style>
-                @page { size: auto; margin: 0; }
-                body { margin: 0; padding: 0; display: flex; justify-content: center; align-items: center; }
-                img { max-width: 100%; max-height: 100vh; object-fit: contain; }
-            </style>
-          </head>
-          <body>
-            <img src="${dataUrl}" onload="window.print()" />
-          </body>
-        </html>
-      `);
-      doc.close();
+        const dataUrl = canvas.toDataURL('image/png');
+        const iframe = document.createElement('iframe');
+        iframe.style.position = 'fixed';
+        iframe.style.width = '0';
+        iframe.style.height = '0';
+        iframe.style.border = 'none';
+        document.body.appendChild(iframe);
 
-      const cleanup = () => {
-          if (document.body.contains(iframe)) {
-              document.body.removeChild(iframe);
-          }
-          if (wasSelected) {
-              setSelectedTextId(wasSelected);
-          }
-      };
+        const doc = iframe.contentWindow?.document;
+        if (!doc) {
+            if (document.body.contains(iframe)) {
+                document.body.removeChild(iframe);
+            }
+            toast({ title: 'Error', description: 'Could not print.', variant: 'destructive' });
+            if(wasSelected) setSelectedTextId(wasSelected);
+            return;
+        }
 
-      iframe.contentWindow?.addEventListener('afterprint', cleanup);
-      // Fallback for browsers that don't support afterprint well
-      setTimeout(cleanup, 2000);
+        doc.open();
+        doc.write(`
+            <html>
+                <head><title>Print</title></head>
+                <body>
+                    <img src="${dataUrl}" onload="window.print()" />
+                </body>
+            </html>
+        `);
+        doc.close();
+
+        let printed = false;
+        const printAndCleanup = () => {
+            if (printed) return;
+            printed = true;
+
+            iframe.contentWindow?.focus();
+            iframe.contentWindow?.print();
+            
+            // Cleanup
+            if (wasSelected) {
+                setSelectedTextId(wasSelected);
+            }
+             if (document.body.contains(iframe)) {
+                document.body.removeChild(iframe);
+            }
+        };
+
+        iframe.onload = printAndCleanup;
+
+        // Fallback timeout in case onload doesn't fire
+        setTimeout(() => {
+            if (!printed) {
+                printAndCleanup();
+            }
+        }, 1000);
+
     }, 100);
-  };
+};
+
   
   if (!composition) {
     return (
@@ -307,6 +320,7 @@ export default function EditPage({ params }: EditPageProps) {
           <SidebarContent className="p-0">
             <ComposerControls
               onClearBackground={clearBackgroundImage}
+              onRestoreBackground={handleRestoreBackground}
               onAddText={startPlacingText}
               selectedText={selectedText}
               onUpdateText={updateText}
