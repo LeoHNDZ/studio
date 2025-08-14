@@ -74,10 +74,10 @@ export default function DashboardPage() {
 
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <header className="p-4 border-b bg-card">
+    <div className="min-h-screen bg-transparent text-foreground">
+      <header className="p-4 border-b bg-card/50 backdrop-blur-sm">
         <div className="container mx-auto flex justify-between items-center">
-          <h1 className="text-2xl font-bold">TicketCompositions</h1>
+          <h1 className="text-2xl font-bold">TicketMaker</h1>
           <Button onClick={createNewTicket}>
             <Plus className="mr-2 h-4 w-4" />
             New Ticket
@@ -93,5 +93,3 @@ export default function DashboardPage() {
     </div>
   );
 }
-
-    

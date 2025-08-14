@@ -88,7 +88,7 @@ export function TicketList({ tickets, onDelete }: TicketListProps) {
                 placeholder="Search tickets..."
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
-                className="max-w-sm"
+                className="max-w-sm bg-card/50 backdrop-blur-sm"
             />
             <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -103,7 +103,7 @@ export function TicketList({ tickets, onDelete }: TicketListProps) {
                 </DropdownMenuContent>
             </DropdownMenu>
         </div>
-        <div className="border rounded-lg">
+        <div className="border rounded-lg bg-card/50 backdrop-blur-sm">
         <Table>
             <TableHeader>
                 <TableRow>
@@ -123,7 +123,7 @@ export function TicketList({ tickets, onDelete }: TicketListProps) {
             </TableHeader>
             <TableBody>
                 {sortedAndFilteredTickets.map(ticket => (
-                    <TableRow key={ticket.id}>
+                    <TableRow key={ticket.id} className="border-border/50">
                         <TableCell className="font-medium">{ticket.name}</TableCell>
                         <TableCell>{ticket.texts.length}</TableCell>
                         <TableCell>{new Date(ticket.createdAt).toLocaleDateString()}</TableCell>

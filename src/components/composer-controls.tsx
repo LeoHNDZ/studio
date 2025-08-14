@@ -84,7 +84,7 @@ export function ComposerControls({
                 id="ticket-name"
                 value={activeTicket.name}
                 onChange={(e) => onUpdateActiveTicket({ name: e.target.value })}
-                className="w-full"
+                className="w-full bg-background/50"
               />
             </div>
           )}
@@ -108,7 +108,7 @@ export function ComposerControls({
         <AccordionTrigger className="px-4">Text Elements</AccordionTrigger>
         <AccordionContent className="px-4 space-y-4">
           <div className="flex items-center gap-2">
-            <Button className="flex-grow" onClick={() => onAddText('New Text')} disabled={isAddingText}>
+            <Button className="flex-grow" variant="outline" onClick={() => onAddText('New Text')} disabled={isAddingText}>
               <Plus className="mr-2 h-4 w-4" /> {isAddingText ? 'Place Text...' : 'Add Text'}
             </Button>
              <Button size="icon" variant="outline" onClick={() => onAddText('✔')} disabled={isAddingText} aria-label="Add Checkmark">
@@ -124,6 +124,7 @@ export function ComposerControls({
                     id="text-content"
                     value={selectedText.text}
                     onChange={(e) => onUpdateText(selectedText.id, { text: e.target.value })}
+                    className="bg-background/50"
                   />
                 </div>
                 <div className="space-y-2">
@@ -133,6 +134,7 @@ export function ComposerControls({
                     type="number"
                     value={selectedText.fontSize}
                     onChange={(e) => onUpdateText(selectedText.id, { fontSize: parseInt(e.target.value, 10) })}
+                     className="bg-background/50"
                   />
                 </div>
                 <div className="space-y-2">
@@ -141,7 +143,7 @@ export function ComposerControls({
                     id="color"
                     type="color"
                     value={selectedText.color}
-                    className='p-1'
+                    className='p-1 bg-background/50'
                     onChange={(e) => onUpdateText(selectedText.id, { color: e.target.value })}
                   />
                 </div>
@@ -162,7 +164,7 @@ export function ComposerControls({
         <AccordionContent className="px-4 space-y-4">
           <Dialog open={isContactDialogOpen} onOpenChange={setIsContactDialogOpen}>
             <DialogTrigger asChild>
-              <Button className="w-full">
+              <Button className="w-full" variant="outline">
                 <UserPlus className="mr-2 h-4 w-4" /> Add Contact
               </Button>
             </DialogTrigger>
@@ -206,7 +208,7 @@ export function ComposerControls({
                 {contacts.length > 0 ? (
                   <div className="space-y-2">
                     {contacts.map(contact => (
-                      <div key={contact.id} className="flex items-center justify-between p-2 rounded-md border">
+                      <div key={contact.id} className="flex items-center justify-between p-2 rounded-md border border-border/50">
                         <div className="text-sm">
                            <p className="font-semibold">{contact.name}</p>
                            <p className="text-muted-foreground text-xs whitespace-pre-wrap">{contact.details}</p>

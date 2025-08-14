@@ -156,7 +156,7 @@ export default function EditPage({ params }: EditPageProps) {
       y: options?.y || canvas.height / 4,
       fontSize: 48,
       fontFamily: 'Inter',
-      color: '#000000',
+      color: '#FFFFFF',
       ...options,
     };
     
@@ -260,7 +260,7 @@ export default function EditPage({ params }: EditPageProps) {
             <html>
                 <head><title>Print</title></head>
                 <body>
-                    <img src="${dataUrl}" onload="window.print()" />
+                    <img src="${dataUrl}" onload="window.print()" style="background: transparent;"/>
                 </body>
             </html>
         `);
@@ -307,7 +307,7 @@ export default function EditPage({ params }: EditPageProps) {
   return (
     <>
       <SidebarProvider>
-        <Sidebar className="border-r bg-card">
+        <Sidebar className="border-r bg-sidebar/70 backdrop-blur-sm">
           <SidebarHeader className="p-4 flex items-center justify-between border-b">
             <div className="flex items-center gap-2">
                <Link href="/" passHref>
@@ -336,8 +336,8 @@ export default function EditPage({ params }: EditPageProps) {
           </SidebarContent>
         </Sidebar>
         <SidebarInset>
-          <div className="h-screen flex flex-col bg-background">
-            <header className="flex-shrink-0 flex items-center justify-between p-2 border-b bg-card">
+          <div className="h-screen flex flex-col bg-transparent">
+            <header className="flex-shrink-0 flex items-center justify-between p-2 border-b bg-card/50 backdrop-blur-sm">
               <SidebarTrigger />
               <div className="flex items-center gap-2">
                 <Button variant="outline" size="sm" onClick={() => canvasRef.current?.resetView()}>

@@ -80,7 +80,7 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
         ctx.scale(scale, scale);
 
         // Draw background
-        ctx.fillStyle = '#f3f4f6';
+        ctx.fillStyle = 'transparent';
         ctx.fillRect(0, 0, canvasWidth, canvasHeight);
 
         if (backgroundImage) {
@@ -527,7 +527,7 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
     return (
       <div 
         ref={containerRef} 
-        className="w-full h-full rounded-lg bg-card shadow-inner overflow-hidden flex justify-center items-center relative"
+        className="w-full h-full rounded-lg bg-card/50 shadow-inner overflow-hidden flex justify-center items-center relative"
       >
         <canvas
           ref={internalCanvasRef}
