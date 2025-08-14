@@ -1,15 +1,15 @@
-# **App Name**: ImageComposer
+# **App Name**: TicketMaker
 
 ## Core Features:
 
-- Background Image Upload: Upload an image to use as a background for the composition.
-- Text Overlay: Add text boxes to the image with customizable font, size, color, and alignment.
-- Drag and Drop: Drag and reposition text boxes on the image, with optional snapping to grid lines or guides.
-- PNG Export: Export the final composition as a PNG image, with or without the background image.
-- Text-Only Printing: Print the text-only version of the composition, preserving the exact positions of the text elements.
-- Quote Suggestion: Suggest quotes from a set of user-defined sources to add to the composition using a generative AI tool.
+- Background Image Upload: Upload an image to use as the ticket background.
+- Text Overlay: Add text boxes with customizable font, size, color, and alignment.
+- Drag and Drop: Drag and reposition text boxes on the ticket, with optional snapping to grid lines or guides.
+- PNG Export: Export the final ticket as a PNG image, with or without the background image.
+- Text-Only Printing: Print the text-only version of the ticket, preserving the exact positions of the text elements.
+- Quote Suggestion: Suggest quotes from a set of user-defined sources to add to the ticket using a generative AI tool.
 - Smoke Tests: Implement simple smoke tests to verify core functionalities.
-- Save/Import Contacts: Save contacts to a database and allow importing them for use in the app.
+- Save/Import Contacts: Save contacts in browser localStorage and allow importing them for use in the app.
 
 ## Style Guidelines:
 
