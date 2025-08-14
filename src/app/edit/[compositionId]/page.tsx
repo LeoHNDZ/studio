@@ -14,7 +14,7 @@ import {
 import { ComposerControls } from '@/components/composer-controls';
 import { ComposerCanvas, type ComposerCanvasHandle } from '@/components/composer-canvas';
 import { Button } from '@/components/ui/button';
-import { Download, Printer, TextQuoteIcon, Image as ImageIcon, RefreshCcw, ArrowLeft } from 'lucide-react';
+import { Download, Printer, Image as ImageIcon, RefreshCcw, ArrowLeft, Copy } from 'lucide-react';
 import { nanoid } from 'nanoid';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
@@ -295,7 +295,25 @@ export default function EditPage({ params }: EditPageProps) {
     }, 100);
 };
 
-  
+  const handleDuplicate = () => {
+    if (!ticket) return;
+
+    const savedTickets = localStorage.getItem('tickets');
+    const tickets = savedTickets ? (JSON.parse(savedTickets) as Ticket[]) : [];
+
+    const newTicket: Ticket = {
+      ...ticket,
+      id: nanoid(),
+      name: `Copy of ${ticket.name}`,
+      createdAt: Date.now(),
+    };
+
+    const updatedTickets = [...tickets, newTicket];
+    localStorage.setItem('tickets', JSON.stringify(updatedTickets));
+    
+    window.open(`/edit/${newTicket.id}`, '_blank');
+  };
+
   if (!ticket) {
     return (
       <div className="h-screen w-screen flex items-center justify-center">
@@ -352,6 +370,10 @@ export default function EditPage({ params }: EditPageProps) {
                   <ImageIcon className="mr-2 h-4 w-4" />
                   Print with BG
                 </Button>
+                 <Button variant="outline" size="sm" onClick={handleDuplicate}>
+                  <Copy className="mr-2 h-4 w-4" />
+                  Duplicate
+                </Button>
                 <Button size="sm" onClick={handleExport}>
                   <Download className="mr-2 h-4 w-4" />
                   Export PNG
@@ -384,3 +406,5 @@ export default function EditPage({ params }: EditPageProps) {
     </>
   );
 }
+
+    

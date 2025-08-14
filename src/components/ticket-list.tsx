@@ -5,7 +5,7 @@ import * as React from 'react';
 import type { Ticket } from '@/lib/types';
 import Link from 'next/link';
 import { Button } from './ui/button';
-import { Trash2, Edit, ArrowUpDown, Copy } from 'lucide-react';
+import { Trash2, Edit, ArrowUpDown } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -39,10 +39,9 @@ type SortDirection = 'asc' | 'desc';
 interface TicketListProps {
   tickets: Ticket[];
   onDelete: (id: string) => void;
-  onDuplicate: (id: string) => void;
 }
 
-export function TicketList({ tickets, onDelete, onDuplicate }: TicketListProps) {
+export function TicketList({ tickets, onDelete }: TicketListProps) {
   const [searchTerm, setSearchTerm] = React.useState('');
   const [sortKey, setSortKey] = React.useState<SortKey>('createdAt');
   const [sortDirection, setSortDirection] = React.useState<SortDirection>('desc');
@@ -130,10 +129,6 @@ export function TicketList({ tickets, onDelete, onDuplicate }: TicketListProps) 
                         <TableCell>{new Date(ticket.createdAt).toLocaleDateString()}</TableCell>
                         <TableCell className="text-right">
                              <div className='flex items-center justify-end gap-2'>
-                                <Button variant="outline" size="sm" onClick={() => onDuplicate(ticket.id)}>
-                                    <Copy className="mr-2 h-4 w-4"/>
-                                    Duplicate
-                                </Button>
                                 <Link href={`/edit/${ticket.id}`} passHref>
                                     <Button variant="outline" size="sm">
                                         <Edit className="mr-2 h-4 w-4"/>
@@ -175,3 +170,5 @@ export function TicketList({ tickets, onDelete, onDuplicate }: TicketListProps) 
     </div>
   );
 }
+
+    
