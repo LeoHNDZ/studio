@@ -152,8 +152,8 @@ export default function EditPage({ params }: EditPageProps) {
     const newText: TextElement = {
       id: nanoid(),
       text,
-      x: options?.x || canvas.width / 4,
-      y: options?.y || canvas.height / 4,
+      x: options?.x ?? canvas.width / 4,
+      y: options?.y ?? canvas.height / 4,
       fontSize: 48,
       fontFamily: 'Inter',
       color: '#000000',
