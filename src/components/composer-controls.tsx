@@ -26,6 +26,8 @@ import { Plus, Trash2, X, UserPlus, BookUser, Check, FilePlus } from 'lucide-rea
 import { Card, CardContent } from './ui/card';
 import { ScrollArea } from './ui/scroll-area';
 import { cn } from '@/lib/utils';
+import { suggestQuote } from '@/ai/flows/suggest-quote';
+import { useToast } from '@/hooks/use-toast';
 
 interface ComposerControlsProps {
   onClearBackground: () => void;
@@ -39,11 +41,7 @@ interface ComposerControlsProps {
   onDeleteContact: (id: string) => void;
   isAddingText: boolean;
   onAddContactText: (text: string) => void;
-  compositions: Composition[];
   activeComposition: Composition | null | undefined;
-  activeCompositionId: string | null;
-  onSetActiveCompositionId: (id: string) => void;
-  onCreateNewComposition: () => void;
   onUpdateActiveComposition: (updates: Partial<Composition>) => void;
 }
 
@@ -59,16 +57,15 @@ export function ComposerControls({
   onDeleteContact,
   isAddingText,
   onAddContactText,
-  compositions,
   activeComposition,
-  activeCompositionId,
-  onSetActiveCompositionId,
-  onCreateNewComposition,
   onUpdateActiveComposition,
 }: ComposerControlsProps) {
   const [newContactName, setNewContactName] = React.useState('');
   const [newContactDetails, setNewContactDetails] = React.useState('');
   const [isContactDialogOpen, setIsContactDialogOpen] = React.useState(false);
+  const [quoteTopic, setQuoteTopic] = React.useState('');
+  const [isSuggestingQuote, setIsSuggestingQuote] = React.useState(false);
+  const { toast } = useToast();
 
   const handleAddContact = () => {
     if (newContactName.trim() && newContactDetails.trim()) {
@@ -78,11 +75,30 @@ export function ComposerControls({
       setIsContactDialogOpen(false);
     }
   };
+  
+  const handleSuggestQuote = async () => {
+    if (!quoteTopic.trim()) return;
+    setIsSuggestingQuote(true);
+    try {
+      const quote = await suggestQuote(quoteTopic);
+      onAddText(quote);
+      setQuoteTopic('');
+    } catch (error) {
+      console.error('Failed to suggest quote', error);
+      toast({
+        title: 'Error',
+        description: 'Could not fetch a quote. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSuggestingQuote(false);
+    }
+  };
 
   return (
     <Accordion type="multiple" defaultValue={['item-1', 'item-2', 'item-3', 'item-4']} className="w-full">
       <AccordionItem value="item-1">
-        <AccordionTrigger className="px-4">Compositions</AccordionTrigger>
+        <AccordionTrigger className="px-4">Composition</AccordionTrigger>
         <AccordionContent className="px-4 space-y-2">
           {activeComposition && (
             <div className="space-y-2">
@@ -95,32 +111,6 @@ export function ComposerControls({
               />
             </div>
           )}
-          <Button className="w-full" onClick={onCreateNewComposition}>
-            <FilePlus className="mr-2 h-4 w-4" /> New Composition
-          </Button>
-          <Card>
-            <CardContent className="pt-4">
-              <ScrollArea className="h-48">
-                <div className="space-y-2">
-                  {compositions.map(comp => (
-                    <button 
-                      key={comp.id} 
-                      onClick={() => onSetActiveCompositionId(comp.id)}
-                      className={cn(
-                        "w-full text-left p-2 rounded-md border text-sm",
-                        comp.id === activeCompositionId 
-                          ? "bg-primary text-primary-foreground border-primary-foreground" 
-                          : "hover:bg-accent"
-                      )}
-                    >
-                      <p className="font-semibold truncate">{comp.name}</p>
-                      <p className="text-xs text-muted-foreground">{comp.texts.length} elements</p>
-                    </button>
-                  ))}
-                </div>
-              </ScrollArea>
-            </CardContent>
-          </Card>
         </AccordionContent>
       </AccordionItem>
       <AccordionItem value="item-2">
@@ -144,6 +134,23 @@ export function ComposerControls({
               <Check className="mr-2 h-4 w-4" /> {isAddingText ? 'Place Mark...' : 'Add Check'}
             </Button>
           </div>
+           <Card>
+            <CardContent className="pt-4 space-y-2">
+              <Label htmlFor="quote-topic">Get AI-Suggested Quote</Label>
+              <div className="flex gap-2">
+                <Input
+                  id="quote-topic"
+                  placeholder="e.g. 'success'"
+                  value={quoteTopic}
+                  onChange={(e) => setQuoteTopic(e.target.value)}
+                  disabled={isSuggestingQuote}
+                />
+                <Button onClick={handleSuggestQuote} disabled={isSuggestingQuote || !quoteTopic.trim()}>
+                  {isSuggestingQuote ? '...' : 'Get'}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
           {selectedText ? (
             <Card>
               <CardContent className="pt-4 space-y-4">
@@ -241,7 +248,7 @@ export function ComposerControls({
                            <p className="text-muted-foreground text-xs whitespace-pre-wrap">{contact.details}</p>
                         </div>
                         <div className='flex gap-1'>
-                            <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => onAddText(`${contact.name}\n${contact.details}`)}>
+                            <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => onAddContactText(`${contact.name}\n${contact.details}`)}>
                                 <Plus className="h-4 w-4" />
                             </Button>
                             <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => onDeleteContact(contact.id)}>
