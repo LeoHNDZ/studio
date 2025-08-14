@@ -132,12 +132,12 @@ export function ComposerControls({
       <AccordionItem value="item-3">
         <AccordionTrigger className="px-4">Text Elements</AccordionTrigger>
         <AccordionContent className="px-4 space-y-4">
-          <div className="grid grid-cols-2 gap-2">
-            <Button className="w-full" onClick={() => onAddText('New Text')} disabled={isAddingText}>
+          <div className="flex items-center gap-2">
+            <Button className="flex-grow" onClick={() => onAddText('New Text')} disabled={isAddingText}>
               <Plus className="mr-2 h-4 w-4" /> {isAddingText ? 'Place Text...' : 'Add Text'}
             </Button>
-             <Button className="w-full" onClick={() => onAddText('✔')} disabled={isAddingText}>
-              <Check className="mr-2 h-4 w-4" /> {isAddingText ? 'Place Mark...' : 'Add Check'}
+             <Button size="icon" variant="outline" onClick={() => onAddText('✔')} disabled={isAddingText} aria-label="Add Checkmark">
+              <Check className="h-4 w-4" />
             </Button>
           </div>
            <Card>
@@ -275,5 +275,3 @@ export function ComposerControls({
     </Accordion>
   );
 }
-
-    
