@@ -40,9 +40,11 @@ interface ComposerControlsProps {
   isAddingText: boolean;
   onAddContactText: (text: string) => void;
   compositions: Composition[];
+  activeComposition: Composition | null | undefined;
   activeCompositionId: string | null;
   onSetActiveCompositionId: (id: string) => void;
   onCreateNewComposition: () => void;
+  onUpdateActiveComposition: (updates: Partial<Composition>) => void;
 }
 
 export function ComposerControls({
@@ -58,9 +60,11 @@ export function ComposerControls({
   isAddingText,
   onAddContactText,
   compositions,
+  activeComposition,
   activeCompositionId,
   onSetActiveCompositionId,
   onCreateNewComposition,
+  onUpdateActiveComposition,
 }: ComposerControlsProps) {
   const [newContactName, setNewContactName] = React.useState('');
   const [newContactDetails, setNewContactDetails] = React.useState('');
@@ -80,6 +84,17 @@ export function ComposerControls({
       <AccordionItem value="item-1">
         <AccordionTrigger className="px-4">Compositions</AccordionTrigger>
         <AccordionContent className="px-4 space-y-2">
+          {activeComposition && (
+            <div className="space-y-2">
+              <Label htmlFor="composition-name">Name</Label>
+              <Input
+                id="composition-name"
+                value={activeComposition.name}
+                onChange={(e) => onUpdateActiveComposition({ name: e.target.value })}
+                className="w-full"
+              />
+            </div>
+          )}
           <Button className="w-full" onClick={onCreateNewComposition}>
             <FilePlus className="mr-2 h-4 w-4" /> New Composition
           </Button>

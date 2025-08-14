@@ -255,18 +255,25 @@ export default function Home() {
         iframe.style.height = '0';
         iframe.style.border = 'none';
         
-        document.body.appendChild(iframe);
-        
-        const doc = iframe.contentWindow?.document;
-        if (!doc) {
-            toast({ title: 'Error', description: 'Could not generate print document.', variant: 'destructive' });
-            if (wasSelected) setSelectedTextId(wasSelected);
-            document.body.removeChild(iframe);
-            return;
-        }
+        iframe.onload = () => {
+            try {
+                if (iframe.contentWindow) {
+                    iframe.contentWindow.focus();
+                    iframe.contentWindow.print();
+                }
+            } catch(e) {
+                toast({ title: 'Error', description: 'Printing failed.', variant: 'destructive' });
+            } finally {
+                if(document.body.contains(iframe)){
+                    document.body.removeChild(iframe);
+                }
+                if (wasSelected) {
+                    setSelectedTextId(wasSelected);
+                }
+            }
+        };
 
-        doc.open();
-        doc.write(`
+        iframe.srcdoc = `
             <html>
                 <head>
                     <title>Print</title>
@@ -280,40 +287,9 @@ export default function Home() {
                     <img src="${dataUrl}" />
                 </body>
             </html>
-        `);
-        doc.close();
+        `;
 
-        const img = doc.querySelector('img');
-        let printed = false;
-        
-        const doPrint = () => {
-            if (printed) return;
-            try {
-                iframe.contentWindow?.focus();
-                iframe.contentWindow?.print();
-            } catch(e) {
-                toast({ title: 'Error', description: 'Printing failed.', variant: 'destructive' });
-            } finally {
-                if(document.body.contains(iframe)){
-                    document.body.removeChild(iframe);
-                }
-                if (wasSelected) {
-                    setSelectedTextId(wasSelected);
-                }
-                printed = true;
-            }
-        };
-
-        if (img) {
-            img.onload = doPrint;
-            setTimeout(() => {
-              if(!printed){
-                doPrint();
-              }
-            }, 1000);
-        } else {
-            doPrint();
-        }
+        document.body.appendChild(iframe);
     }, 100);
   };
   
@@ -348,9 +324,11 @@ export default function Home() {
               isAddingText={!!pendingText}
               onAddContactText={addText}
               compositions={compositions}
+              activeComposition={activeComposition}
               activeCompositionId={activeCompositionId}
               onSetActiveCompositionId={setActiveCompositionId}
               onCreateNewComposition={createNewComposition}
+              onUpdateActiveComposition={updateActiveComposition}
             />
           </SidebarContent>
         </Sidebar>
