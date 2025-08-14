@@ -79,11 +79,29 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
         ctx.translate(pan.x, pan.y);
         ctx.scale(scale, scale);
 
+        // Draw background
+        ctx.fillStyle = '#f3f4f6';
+        ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+
         if (backgroundImage) {
-            ctx.drawImage(backgroundImage, 0, 0, canvasWidth, canvasHeight);
-        } else {
-            ctx.fillStyle = '#f3f4f6';
-            ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+            const imgAspectRatio = backgroundImage.width / backgroundImage.height;
+            const canvasAspectRatio = canvasWidth / canvasHeight;
+            let drawWidth, drawHeight, x, y;
+
+            if (imgAspectRatio > canvasAspectRatio) {
+                // Image is wider, fit to canvas width
+                drawWidth = canvasWidth;
+                drawHeight = canvasWidth / imgAspectRatio;
+                x = 0;
+                y = (canvasHeight - drawHeight) / 2;
+            } else {
+                // Image is taller or same ratio, fit to canvas height
+                drawHeight = canvasHeight;
+                drawWidth = canvasHeight * imgAspectRatio;
+                y = 0;
+                x = (canvasWidth - drawWidth) / 2;
+            }
+            ctx.drawImage(backgroundImage, x, y, drawWidth, drawHeight);
         }
         
         texts.forEach((text) => {
@@ -172,12 +190,25 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
           if (!ctx) return null;
           
           if (withBackground && backgroundImage) {
-              ctx.drawImage(backgroundImage, 0, 0, canvasWidth, canvasHeight);
-          } else if (!withBackground) {
+              const imgAspectRatio = backgroundImage.width / backgroundImage.height;
+              const canvasAspectRatio = canvasWidth / canvasHeight;
+              let drawWidth, drawHeight, x, y;
+
+              if (imgAspectRatio > canvasAspectRatio) {
+                  drawWidth = canvasWidth;
+                  drawHeight = canvasWidth / imgAspectRatio;
+                  x = 0;
+                  y = (canvasHeight - drawHeight) / 2;
+              } else {
+                  drawHeight = canvasHeight;
+                  drawWidth = canvasHeight * imgAspectRatio;
+                  y = 0;
+                  x = (canvasWidth - drawWidth) / 2;
+              }
+              ctx.drawImage(backgroundImage, x, y, drawWidth, drawHeight);
+          } else {
               ctx.fillStyle = 'white';
               ctx.fillRect(0, 0, canvasWidth, canvasHeight);
-          } else {
-              // transparent background for export if no image
           }
 
 
