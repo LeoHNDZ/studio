@@ -15,3 +15,12 @@ export type Contact = {
   name: string;
   details: string;
 };
+
+export type Composition = {
+  id: string;
+  name: string;
+  backgroundImageUrl: string | null;
+  texts: TextElement[];
+  canvasWidth: number;
+  canvasHeight: number;
+};

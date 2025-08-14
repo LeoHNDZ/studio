@@ -2,7 +2,7 @@
 "use client";
 
 import * as React from 'react';
-import type { TextElement, Contact } from '@/lib/types';
+import type { TextElement, Contact, Composition } from '@/lib/types';
 import {
   Accordion,
   AccordionContent,
@@ -22,40 +22,45 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, RotateCcw, Trash2, X, UserPlus, BookUser, Check } from 'lucide-react';
+import { Plus, Trash2, X, UserPlus, BookUser, Check, FilePlus } from 'lucide-react';
 import { Card, CardContent } from './ui/card';
 import { ScrollArea } from './ui/scroll-area';
+import { cn } from '@/lib/utils';
 
 interface ComposerControlsProps {
   onClearBackground: () => void;
-  onRestoreBackground: () => void;
   onAddText: (text: string) => void;
   selectedText: TextElement | null;
   onUpdateText: (id: string, newProps: Partial<TextElement>) => void;
   onDeleteText: (id: string) => void;
   hasBackgroundImage: boolean;
-  hasClearedBackgroundImage: boolean;
   contacts: Contact[];
   onAddContact: (name: string, details: string) => void;
   onDeleteContact: (id: string) => void;
   isAddingText: boolean;
   onAddContactText: (text: string) => void;
+  compositions: Composition[];
+  activeCompositionId: string | null;
+  onSetActiveCompositionId: (id: string) => void;
+  onCreateNewComposition: () => void;
 }
 
 export function ComposerControls({
   onClearBackground,
-  onRestoreBackground,
   onAddText,
   selectedText,
   onUpdateText,
   onDeleteText,
   hasBackgroundImage,
-  hasClearedBackgroundImage,
   contacts,
   onAddContact,
   onDeleteContact,
   isAddingText,
   onAddContactText,
+  compositions,
+  activeCompositionId,
+  onSetActiveCompositionId,
+  onCreateNewComposition,
 }: ComposerControlsProps) {
   const [newContactName, setNewContactName] = React.useState('');
   const [newContactDetails, setNewContactDetails] = React.useState('');
@@ -71,8 +76,39 @@ export function ComposerControls({
   };
 
   return (
-    <Accordion type="multiple" defaultValue={['item-1', 'item-2', 'item-3']} className="w-full">
+    <Accordion type="multiple" defaultValue={['item-1', 'item-2', 'item-3', 'item-4']} className="w-full">
       <AccordionItem value="item-1">
+        <AccordionTrigger className="px-4">Compositions</AccordionTrigger>
+        <AccordionContent className="px-4 space-y-2">
+          <Button className="w-full" onClick={onCreateNewComposition}>
+            <FilePlus className="mr-2 h-4 w-4" /> New Composition
+          </Button>
+          <Card>
+            <CardContent className="pt-4">
+              <ScrollArea className="h-48">
+                <div className="space-y-2">
+                  {compositions.map(comp => (
+                    <button 
+                      key={comp.id} 
+                      onClick={() => onSetActiveCompositionId(comp.id)}
+                      className={cn(
+                        "w-full text-left p-2 rounded-md border text-sm",
+                        comp.id === activeCompositionId 
+                          ? "bg-primary text-primary-foreground border-primary-foreground" 
+                          : "hover:bg-accent"
+                      )}
+                    >
+                      <p className="font-semibold truncate">{comp.name}</p>
+                      <p className="text-xs text-muted-foreground">{comp.texts.length} elements</p>
+                    </button>
+                  ))}
+                </div>
+              </ScrollArea>
+            </CardContent>
+          </Card>
+        </AccordionContent>
+      </AccordionItem>
+      <AccordionItem value="item-2">
         <AccordionTrigger className="px-4">Background</AccordionTrigger>
         <AccordionContent className="px-4 space-y-2">
           {hasBackgroundImage && (
@@ -80,14 +116,9 @@ export function ComposerControls({
                 <X className="mr-2 h-4 w-4" /> Clear Background
             </Button>
           )}
-          {hasClearedBackgroundImage && !hasBackgroundImage && (
-             <Button variant="outline" className="w-full" onClick={onRestoreBackground}>
-                <RotateCcw className="mr-2 h-4 w-4" /> Restore Background
-            </Button>
-          )}
         </AccordionContent>
       </AccordionItem>
-      <AccordionItem value="item-2">
+      <AccordionItem value="item-3">
         <AccordionTrigger className="px-4">Text Elements</AccordionTrigger>
         <AccordionContent className="px-4 space-y-4">
           <div className="grid grid-cols-2 gap-2">
@@ -140,7 +171,7 @@ export function ComposerControls({
           )}
         </AccordionContent>
       </AccordionItem>
-      <AccordionItem value="item-3">
+      <AccordionItem value="item-4">
         <AccordionTrigger className="px-4">Contacts</AccordionTrigger>
         <AccordionContent className="px-4 space-y-4">
           <Dialog open={isContactDialogOpen} onOpenChange={setIsContactDialogOpen}>

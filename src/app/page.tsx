@@ -2,7 +2,7 @@
 "use client";
 
 import * as React from 'react';
-import type { TextElement, Contact } from '@/lib/types';
+import type { TextElement, Contact, Composition } from '@/lib/types';
 import {
   Sidebar,
   SidebarContent,
@@ -20,10 +20,24 @@ import { useToast } from '@/hooks/use-toast';
 
 const DEFAULT_IMAGE_URL = '/Ticket.png';
 
+const defaultComposition = (width: number, height: number): Composition => ({
+  id: nanoid(),
+  name: 'Untitled Composition',
+  backgroundImageUrl: DEFAULT_IMAGE_URL,
+  texts: [],
+  canvasWidth: width,
+  canvasHeight: height,
+});
+
 export default function Home() {
+  const [compositions, setCompositions] = React.useState<Composition[]>([]);
+  const [activeCompositionId, setActiveCompositionId] = React.useState<string | null>(null);
+  
   const [backgroundImage, setBackgroundImage] = React.useState<HTMLImageElement | null>(null);
-  const [clearedBackgroundImage, setClearedBackgroundImage] = React.useState<HTMLImageElement | null>(null);
   const [texts, setTexts] = React.useState<TextElement[]>([]);
+  const [canvasWidth, setCanvasWidth] = React.useState<number>(0);
+  const [canvasHeight, setCanvasHeight] = React.useState<number>(0);
+
   const [selectedTextId, setSelectedTextId] = React.useState<string | null>(null);
   const [editingTextId, setEditingTextId] = React.useState<string | null>(null);
   const [contacts, setContacts] = React.useState<Contact[]>([]);
@@ -32,21 +46,73 @@ export default function Home() {
   
   const [pendingText, setPendingText] = React.useState<string | null>(null);
 
-
-  const [canvasWidth, setCanvasWidth] = React.useState<number>(0);
-  const [canvasHeight, setCanvasHeight] = React.useState<number>(0);
-  
-
+  // Load initial image to get dimensions
   React.useEffect(() => {
     const img = new Image();
     img.src = DEFAULT_IMAGE_URL;
     img.onload = () => {
       setCanvasWidth(img.width);
       setCanvasHeight(img.height);
-      setBackgroundImage(img);
+      
+      try {
+        const savedCompositions = localStorage.getItem('compositions');
+        const savedActiveId = localStorage.getItem('activeCompositionId');
+        
+        if (savedCompositions && savedActiveId) {
+          const parsedComps = JSON.parse(savedCompositions);
+          if (Array.isArray(parsedComps) && parsedComps.length > 0) {
+            setCompositions(parsedComps);
+            setActiveCompositionId(savedActiveId);
+            return;
+          }
+        }
+      } catch (error) {
+        console.error("Failed to load compositions from localStorage", error);
+      }
+      
+      // If no saved data, create a new default composition
+      const newComp = defaultComposition(img.width, img.height);
+      setCompositions([newComp]);
+      setActiveCompositionId(newComp.id);
     };
   }, []);
 
+  const activeComposition = React.useMemo(() => {
+    return compositions.find(c => c.id === activeCompositionId);
+  }, [compositions, activeCompositionId]);
+
+  // Effect to update canvas when active composition changes
+  React.useEffect(() => {
+    if (activeComposition) {
+      setTexts(activeComposition.texts);
+      setCanvasWidth(activeComposition.canvasWidth);
+      setCanvasHeight(activeComposition.canvasHeight);
+      
+      if (activeComposition.backgroundImageUrl) {
+        const img = new Image();
+        img.src = activeComposition.backgroundImageUrl;
+        img.onload = () => {
+          setBackgroundImage(img);
+        };
+      } else {
+        setBackgroundImage(null);
+      }
+    } else {
+      setTexts([]);
+      setBackgroundImage(null);
+    }
+  }, [activeComposition]);
+
+
+  // Effect to save compositions to localStorage
+  React.useEffect(() => {
+    if (compositions.length > 0 && activeCompositionId) {
+      localStorage.setItem('compositions', JSON.stringify(compositions));
+      localStorage.setItem('activeCompositionId', activeCompositionId);
+    }
+  }, [compositions, activeCompositionId]);
+
+  // Load contacts
   React.useEffect(() => {
     try {
       const savedContacts = localStorage.getItem('contacts');
@@ -57,6 +123,14 @@ export default function Home() {
       console.error("Failed to load contacts from localStorage", error);
     }
   }, []);
+
+  const updateActiveComposition = (updates: Partial<Composition>) => {
+    if (!activeCompositionId) return;
+    setCompositions(comps => comps.map(c => 
+      c.id === activeCompositionId ? { ...c, ...updates } : c
+    ));
+  };
+
 
   const saveContacts = (updatedContacts: Contact[]) => {
     try {
@@ -79,20 +153,11 @@ export default function Home() {
   };
   
   const clearBackgroundImage = () => {
-    if (backgroundImage) {
-        setClearedBackgroundImage(backgroundImage);
-    }
-    setBackgroundImage(null);
+    updateActiveComposition({ backgroundImageUrl: null });
   };
-
-  const restoreBackgroundImage = () => {
-    if (clearedBackgroundImage) {
-      setBackgroundImage(clearedBackgroundImage);
-      setClearedBackgroundImage(null);
-    }
-  };
-
+  
   const addText = (text: string, options?: Partial<Omit<TextElement, 'id' | 'text'>>) => {
+    if (!activeComposition) return;
     const canvas = canvasRef.current?.getCanvas();
     if (!canvas) return;
     
@@ -106,7 +171,9 @@ export default function Home() {
       color: '#000000',
       ...options,
     };
-    setTexts((prev) => [...prev, newText]);
+    
+    const newTexts = [...activeComposition.texts, newText];
+    updateActiveComposition({ texts: newTexts });
     setSelectedTextId(newText.id);
   };
   
@@ -117,11 +184,14 @@ export default function Home() {
 
 
   const updateText = (id: string, newProps: Partial<TextElement>) => {
-    setTexts((prev) => prev.map((t) => (t.id === id ? { ...t, ...newProps } : t)));
+    const newTexts = texts.map((t) => (t.id === id ? { ...t, ...newProps } : t));
+    updateActiveComposition({ texts: newTexts });
   };
 
   const deleteText = (id: string) => {
-    setTexts((prev) => prev.filter((t) => t.id !== id));
+    const newTexts = texts.filter((t) => t.id !== id);
+    updateActiveComposition({ texts: newTexts });
+
     if (selectedTextId === id) {
       setSelectedTextId(null);
     }
@@ -168,82 +238,89 @@ export default function Home() {
     const wasSelected = selectedTextId;
     setSelectedTextId(null);
     setEditingTextId(null);
-  
+
     setTimeout(() => {
-      const canvas = canvasRef.current?.getCanvas(withBackground);
-      if (!canvas) {
-        toast({ title: 'Error', description: 'Could not generate print image.', variant: 'destructive' });
-        if (wasSelected) setSelectedTextId(wasSelected);
-        return;
-      }
-      
-      const dataUrl = canvas.toDataURL('image/png');
-      const iframe = document.createElement('iframe');
-      
-      iframe.style.position = 'fixed';
-      iframe.style.width = '0';
-      iframe.style.height = '0';
-      iframe.style.border = 'none';
-      iframe.style.top = '-9999px';
-      iframe.style.left = '-9999px';
-      
-      document.body.appendChild(iframe);
-      
-      const doc = iframe.contentWindow?.document;
-      if (!doc) {
-        toast({ title: 'Error', description: 'Could not generate print document.', variant: 'destructive' });
-        if (wasSelected) setSelectedTextId(wasSelected);
-        document.body.removeChild(iframe);
-        return;
-      }
-
-      doc.open();
-      doc.write(`
-        <html>
-          <head>
-            <title>Print</title>
-            <style>
-              @page { size: auto; margin: 0; }
-              body { margin: 0; padding: 0; display: flex; justify-content: center; align-items: center; }
-              img { max-width: 100%; max-height: 100vh; object-fit: contain; }
-            </style>
-          </head>
-          <body>
-            <img src="${dataUrl}" />
-          </body>
-        </html>
-      `);
-      doc.close();
-
-      const img = doc.querySelector('img');
-      let printed = false;
-      
-      const doPrint = () => {
-        if (printed) return;
-        try {
-          iframe.contentWindow?.focus();
-          iframe.contentWindow?.print();
-        } catch(e) {
-           toast({ title: 'Error', description: 'Printing failed.', variant: 'destructive' });
-        } finally {
-            if(document.body.contains(iframe)){
-              document.body.removeChild(iframe);
-            }
-            if (wasSelected) {
-              setSelectedTextId(wasSelected);
-            }
-            printed = true;
+        const canvas = canvasRef.current?.getCanvas(withBackground);
+        if (!canvas) {
+            toast({ title: 'Error', description: 'Could not generate print image.', variant: 'destructive' });
+            if (wasSelected) setSelectedTextId(wasSelected);
+            return;
         }
-      };
+        
+        const dataUrl = canvas.toDataURL('image/png');
+        const iframe = document.createElement('iframe');
+        
+        iframe.style.position = 'fixed';
+        iframe.style.width = '0';
+        iframe.style.height = '0';
+        iframe.style.border = 'none';
+        
+        document.body.appendChild(iframe);
+        
+        const doc = iframe.contentWindow?.document;
+        if (!doc) {
+            toast({ title: 'Error', description: 'Could not generate print document.', variant: 'destructive' });
+            if (wasSelected) setSelectedTextId(wasSelected);
+            document.body.removeChild(iframe);
+            return;
+        }
 
-      if (img) {
-          img.onload = doPrint;
-          // Fallback if onload doesn't fire
-          setTimeout(doPrint, 1000);
-      } else {
-        doPrint();
-      }
+        doc.open();
+        doc.write(`
+            <html>
+                <head>
+                    <title>Print</title>
+                    <style>
+                        @page { size: auto; margin: 0; }
+                        body { margin: 0; padding: 0; display: flex; justify-content: center; align-items: center; }
+                        img { max-width: 100%; max-height: 100vh; object-fit: contain; }
+                    </style>
+                </head>
+                <body>
+                    <img src="${dataUrl}" />
+                </body>
+            </html>
+        `);
+        doc.close();
+
+        const img = doc.querySelector('img');
+        let printed = false;
+        
+        const doPrint = () => {
+            if (printed) return;
+            try {
+                iframe.contentWindow?.focus();
+                iframe.contentWindow?.print();
+            } catch(e) {
+                toast({ title: 'Error', description: 'Printing failed.', variant: 'destructive' });
+            } finally {
+                if(document.body.contains(iframe)){
+                    document.body.removeChild(iframe);
+                }
+                if (wasSelected) {
+                    setSelectedTextId(wasSelected);
+                }
+                printed = true;
+            }
+        };
+
+        if (img) {
+            img.onload = doPrint;
+            setTimeout(() => {
+              if(!printed){
+                doPrint();
+              }
+            }, 1000);
+        } else {
+            doPrint();
+        }
     }, 100);
+  };
+  
+  const createNewComposition = () => {
+    const newComp = defaultComposition(canvasWidth, canvasHeight);
+    setCompositions(prev => [...prev, newComp]);
+    setActiveCompositionId(newComp.id);
   };
 
 
@@ -260,18 +337,20 @@ export default function Home() {
           <SidebarContent className="p-0">
             <ComposerControls
               onClearBackground={clearBackgroundImage}
-              onRestoreBackground={restoreBackgroundImage}
               onAddText={startPlacingText}
               selectedText={selectedText}
               onUpdateText={updateText}
               onDeleteText={deleteText}
-              hasBackgroundImage={!!backgroundImage}
-              hasClearedBackgroundImage={!!clearedBackgroundImage}
+              hasBackgroundImage={!!activeComposition?.backgroundImageUrl}
               contacts={contacts}
               onAddContact={addContact}
               onDeleteContact={deleteContact}
               isAddingText={!!pendingText}
               onAddContactText={addText}
+              compositions={compositions}
+              activeCompositionId={activeCompositionId}
+              onSetActiveCompositionId={setActiveCompositionId}
+              onCreateNewComposition={createNewComposition}
             />
           </SidebarContent>
         </Sidebar>
