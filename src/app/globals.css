@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -83,5 +84,26 @@
     @apply bg-background text-foreground;
     background-image: radial-gradient(circle at top right, hsl(216 100% 50% / 0.1), transparent 40%),
     radial-gradient(circle at bottom left, hsl(340 95% 50% / 0.1), transparent 50%);
+  }
+}
+
+@layer components {
+  .ac-popover {
+    @apply absolute top-full left-0 right-0 z-10 mt-1 max-h-60 w-full overflow-auto rounded-md bg-popover text-popover-foreground shadow-md;
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+  .ac-option {
+    @apply relative cursor-default select-none py-2 px-3 text-sm flex justify-between items-center;
+  }
+  .ac-option.is-active {
+    @apply bg-accent text-accent-foreground;
+  }
+  .ac-option-text {
+    @apply font-medium;
+  }
+  .ac-meta {
+    @apply text-xs text-muted-foreground;
   }
 }

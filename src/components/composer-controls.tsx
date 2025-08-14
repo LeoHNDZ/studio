@@ -21,11 +21,14 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { AutocompleteInput } from '@/components/ui/autocomplete-input';
+import { AutocompleteTextarea } from '@/components/ui/autocomplete-textarea';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, Trash2, X, UserPlus, BookUser, Check, RefreshCcw } from 'lucide-react';
+import { Plus, Trash2, X, UserPlus, BookUser, Check, RefreshCcw, Copy, BrainCircuit } from 'lucide-react';
 import { Card, CardContent } from './ui/card';
 import { ScrollArea } from './ui/scroll-area';
+import { useToast } from '@/hooks/use-toast';
+import { suggestQuote } from '@/ai/flows/suggest-quote';
 
 interface ComposerControlsProps {
   onClearBackground: () => void;
@@ -63,6 +66,9 @@ export function ComposerControls({
   const [newContactName, setNewContactName] = React.useState('');
   const [newContactDetails, setNewContactDetails] = React.useState('');
   const [isContactDialogOpen, setIsContactDialogOpen] = React.useState(false);
+  const [quoteTopic, setQuoteTopic] = React.useState('');
+  const [isSuggesting, setIsSuggesting] = React.useState(false);
+  const { toast } = useToast();
   
   const handleAddContact = () => {
     if (newContactName.trim() && newContactDetails.trim()) {
@@ -72,9 +78,28 @@ export function ComposerControls({
       setIsContactDialogOpen(false);
     }
   };
+  
+  const handleSuggestQuote = async () => {
+    if (!quoteTopic.trim()) return;
+    setIsSuggesting(true);
+    try {
+      const quote = await suggestQuote(quoteTopic);
+      onAddText(quote);
+    } catch (error) {
+      console.error("Failed to suggest quote", error);
+      toast({
+        title: 'Error',
+        description: 'Could not fetch a quote. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSuggesting(false);
+      setQuoteTopic('');
+    }
+  };
 
   return (
-    <Accordion type="multiple" defaultValue={['item-1', 'item-2', 'item-3', 'item-4']} className="w-full">
+    <Accordion type="multiple" defaultValue={['item-1', 'item-2', 'item-3', 'item-4', 'item-5']} className="w-full">
       <AccordionItem value="item-1">
         <AccordionTrigger className="px-4">Ticket</AccordionTrigger>
         <AccordionContent className="px-4 space-y-2">
@@ -122,10 +147,11 @@ export function ComposerControls({
               <CardContent className="pt-4 space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="text-content">Content</Label>
-                  <Textarea
+                  <AutocompleteTextarea
                     id="text-content"
-                    value={selectedText.text}
-                    onChange={(e) => onUpdateText(selectedText.id, { text: e.target.value })}
+                    storageKey="text-element-content"
+                    defaultValue={selectedText.text}
+                    onSubmit={(text) => onUpdateText(selectedText.id, { text })}
                     className="bg-background/50"
                   />
                 </div>
@@ -233,6 +259,32 @@ export function ComposerControls({
                </ScrollArea>
              </CardContent>
           </Card>
+        </AccordionContent>
+      </AccordionItem>
+      <AccordionItem value="item-5">
+        <AccordionTrigger className="px-4">AI Tools</AccordionTrigger>
+        <AccordionContent className="px-4 space-y-4">
+           <Card>
+              <CardContent className="pt-4">
+                <div className="space-y-2">
+                    <Label htmlFor="quote-topic">Suggest a Quote</Label>
+                    <div className="flex items-center gap-2">
+                      <Input
+                          id="quote-topic"
+                          placeholder="e.g. 'Success'"
+                          value={quoteTopic}
+                          onChange={(e) => setQuoteTopic(e.target.value)}
+                          disabled={isSuggesting}
+                          className="bg-background/50"
+                      />
+                      <Button onClick={handleSuggestQuote} disabled={!quoteTopic.trim() || isSuggesting}>
+                        <BrainCircuit className="mr-2 h-4 w-4" />
+                        {isSuggesting ? 'Thinking...' : 'Suggest'}
+                      </Button>
+                    </div>
+                </div>
+              </CardContent>
+           </Card>
         </AccordionContent>
       </AccordionItem>
     </Accordion>
