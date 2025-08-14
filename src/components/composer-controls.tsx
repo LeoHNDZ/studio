@@ -22,12 +22,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, Trash2, X, UserPlus, BookUser, Check, FilePlus, RefreshCcw } from 'lucide-react';
+import { Plus, Trash2, X, UserPlus, BookUser, Check, RefreshCcw } from 'lucide-react';
 import { Card, CardContent } from './ui/card';
 import { ScrollArea } from './ui/scroll-area';
-import { cn } from '@/lib/utils';
-import { suggestQuote } from '@/ai/flows/suggest-quote';
-import { useToast } from '@/hooks/use-toast';
 
 interface ComposerControlsProps {
   onClearBackground: () => void;
@@ -65,35 +62,13 @@ export function ComposerControls({
   const [newContactName, setNewContactName] = React.useState('');
   const [newContactDetails, setNewContactDetails] = React.useState('');
   const [isContactDialogOpen, setIsContactDialogOpen] = React.useState(false);
-  const [quoteTopic, setQuoteTopic] = React.useState('');
-  const [isSuggestingQuote, setIsSuggestingQuote] = React.useState(false);
-  const { toast } = useToast();
-
+  
   const handleAddContact = () => {
     if (newContactName.trim() && newContactDetails.trim()) {
       onAddContact(newContactName.trim(), newContactDetails.trim());
       setNewContactName('');
       setNewContactDetails('');
       setIsContactDialogOpen(false);
-    }
-  };
-  
-  const handleSuggestQuote = async () => {
-    if (!quoteTopic.trim()) return;
-    setIsSuggestingQuote(true);
-    try {
-      const quote = await suggestQuote(quoteTopic);
-      onAddText(quote);
-      setQuoteTopic('');
-    } catch (error) {
-      console.error('Failed to suggest quote', error);
-      toast({
-        title: 'Error',
-        description: 'Could not fetch a quote. Please try again.',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsSuggestingQuote(false);
     }
   };
 
@@ -140,23 +115,6 @@ export function ComposerControls({
               <Check className="h-4 w-4" />
             </Button>
           </div>
-           <Card>
-            <CardContent className="pt-4 space-y-2">
-              <Label htmlFor="quote-topic">Get AI-Suggested Quote</Label>
-              <div className="flex gap-2">
-                <Input
-                  id="quote-topic"
-                  placeholder="e.g. 'success'"
-                  value={quoteTopic}
-                  onChange={(e) => setQuoteTopic(e.target.value)}
-                  disabled={isSuggestingQuote}
-                />
-                <Button onClick={handleSuggestQuote} disabled={isSuggestingQuote || !quoteTopic.trim()}>
-                  {isSuggestingQuote ? '...' : 'Get'}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
           {selectedText ? (
             <Card>
               <CardContent className="pt-4 space-y-4">
