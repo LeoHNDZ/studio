@@ -76,7 +76,7 @@ export function TicketList({ tickets, onDelete }: TicketListProps) {
     return (
       <div className="text-center py-16">
         <h2 className="text-xl font-semibold">No tickets yet</h2>
-        <p className="text-muted-foreground mt-2">Click "New Ticket" to get started.</p>
+        <p className="text-muted-foreground mt-2">Click &quot;New Ticket&quot; to get started.</p>
       </div>
     );
   }
@@ -145,7 +145,7 @@ export function TicketList({ tickets, onDelete }: TicketListProps) {
                                     <AlertDialogHeader>
                                     <AlertDialogTitle>Are you sure?</AlertDialogTitle>
                                     <AlertDialogDescription>
-                                        This will permanently delete the ticket "{ticket.name}". This action cannot be undone.
+                                        This will permanently delete the ticket &quot;{ticket.name}&quot;. This action cannot be undone.
                                     </AlertDialogDescription>
                                     </AlertDialogHeader>
                                     <AlertDialogFooter>

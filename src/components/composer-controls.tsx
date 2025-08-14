@@ -20,6 +20,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { AutocompleteTextarea } from '@/components/ui/autocomplete-input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Plus, Trash2, X, UserPlus, BookUser, Check, RefreshCcw } from 'lucide-react';
@@ -120,8 +121,9 @@ export function ComposerControls({
               <CardContent className="pt-4 space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="text-content">Content</Label>
-                  <Textarea
+                  <AutocompleteTextarea
                     id="text-content"
+                    storageKey="composition-text"
                     value={selectedText.text}
                     onChange={(e) => onUpdateText(selectedText.id, { text: e.target.value })}
                     className="bg-background/50"
@@ -175,7 +177,7 @@ export function ComposerControls({
               <div className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="new-contact-name">Name</Label>
-                  <Input 
+                  <Input
                     id="new-contact-name"
                     placeholder="John Doe"
                     value={newContactName}
