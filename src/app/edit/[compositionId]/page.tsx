@@ -314,7 +314,7 @@ export default function EditPage({ params }: EditPageProps) {
                  <Button variant="ghost" size="icon"><ArrowLeft /></Button>
                </Link>
               <TextQuoteIcon className="w-6 h-6 text-primary-foreground" />
-              <h1 className="text-xl font-semibold font-headline">TicketComposer</h1>
+              <h1 className="text-xl font-semibold font-headline">TicketMaker</h1>
             </div>
           </SidebarHeader>
           <SidebarContent className="p-0">
