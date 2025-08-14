@@ -156,7 +156,7 @@ export default function EditPage({ params }: EditPageProps) {
       y: options?.y || canvas.height / 4,
       fontSize: 48,
       fontFamily: 'Inter',
-      color: '#FFFFFF',
+      color: '#000000',
       ...options,
     };
     
@@ -259,8 +259,8 @@ export default function EditPage({ params }: EditPageProps) {
         doc.write(`
             <html>
                 <head><title>Print</title></head>
-                <body>
-                    <img src="${dataUrl}" onload="window.print()" style="background: transparent;"/>
+                <body style="margin: 0; padding: 0;">
+                    <img src="${dataUrl}" onload="window.print()" style="background: transparent; max-width: 100%;"/>
                 </body>
             </html>
         `);
@@ -270,9 +270,6 @@ export default function EditPage({ params }: EditPageProps) {
         const printAndCleanup = () => {
             if (printed) return;
             printed = true;
-
-            iframe.contentWindow?.focus();
-            iframe.contentWindow?.print();
             
             // Cleanup
             if (wasSelected) {
@@ -283,14 +280,19 @@ export default function EditPage({ params }: EditPageProps) {
             }
         };
 
-        iframe.onload = printAndCleanup;
+        const handleAfterPrint = () => {
+            printAndCleanup();
+            window.removeEventListener('afterprint', handleAfterPrint);
+        };
+        
+        window.addEventListener('afterprint', handleAfterPrint);
 
-        // Fallback timeout in case onload doesn't fire
+        // Fallback timeout in case afterprint doesn't fire
         setTimeout(() => {
             if (!printed) {
                 printAndCleanup();
             }
-        }, 1000);
+        }, 2000);
 
     }, 100);
 };
