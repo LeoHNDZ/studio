@@ -102,22 +102,23 @@ function escapeRegExp(s: string) {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-type AutocompleteProps = Omit<React.ComponentProps<typeof Input>, 'onSubmit' | 'value' | 'defaultValue'> & {
+type AutocompleteProps = Omit<React.ComponentProps<typeof Input>, 'onSubmit'> & {
   storageKey?: string;
   maxSuggestions?: number;
-  value?: string;
-  defaultValue?: string;
   onSubmit?: (value: string) => void;
   rememberOnBlur?: boolean;
 };
 
 export const AutocompleteInput = React.forwardRef<HTMLInputElement, AutocompleteProps>(
-  ({ id, placeholder, storageKey, maxSuggestions, className, value: controlledValue, defaultValue, onChange, onBlur, onSubmit, rememberOnBlur = true, ...props}, ref) => {
+  ({ id, placeholder, storageKey, maxSuggestions, className, defaultValue, onSubmit, rememberOnBlur = true, ...props}, ref) => {
     const engine = React.useMemo(() => new MemoryAutocomplete({ storageKey }), [storageKey]);
     
-    const [internalValue, setInternalValue] = React.useState(defaultValue ?? '');
-    const value = controlledValue !== undefined ? controlledValue : internalValue;
-    const setValue = controlledValue !== undefined ? (val: string) => onChange?.({ target: { value: val } } as any) : setInternalValue;
+    const [value, setValue] = React.useState(defaultValue ?? '');
+    
+    // Sync defaultValue with internal state
+    React.useEffect(() => {
+        setValue(defaultValue ?? '');
+    }, [defaultValue]);
 
     const [open, setOpen] = React.useState(false);
     const [suggestions, setSuggestions] = React.useState<HistoryItem[]>([]);
@@ -179,7 +180,6 @@ export const AutocompleteInput = React.forwardRef<HTMLInputElement, Autocomplete
     const handleChange: React.ChangeEventHandler<HTMLInputElement> = (e) => {
       const v = e.target.value;
       setValue(v);
-      onChange?.(e);
       refresh(v);
     };
 
@@ -188,10 +188,8 @@ export const AutocompleteInput = React.forwardRef<HTMLInputElement, Autocomplete
     };
     
     const handleBlur: React.FocusEventHandler<HTMLInputElement> = (e) => {
-      onBlur?.(e);
       if (rememberOnBlur && value.trim()) {
-        engine.remember(value);
-        onSubmit?.(value.trim());
+        commit(value);
       }
     };
 

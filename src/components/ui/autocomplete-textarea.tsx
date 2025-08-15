@@ -110,12 +110,15 @@ type AutocompleteProps = Omit<React.ComponentProps<typeof Textarea>, 'onSubmit'>
 };
 
 export const AutocompleteTextarea = React.forwardRef<HTMLTextAreaElement, AutocompleteProps>(
-  ({ id, placeholder, storageKey, maxSuggestions, className, value: controlledValue, defaultValue, onChange, onBlur, onSubmit, rememberOnBlur = true, ...props}, ref) => {
+  ({ id, placeholder, storageKey, maxSuggestions, className, defaultValue, onSubmit, rememberOnBlur = true, ...props}, ref) => {
     const engine = React.useMemo(() => new MemoryAutocomplete({ storageKey }), [storageKey]);
     
-    const [internalValue, setInternalValue] = React.useState(defaultValue ?? '');
-    const value = controlledValue !== undefined ? controlledValue : internalValue;
-    const setValue = controlledValue !== undefined ? (val: string) => onChange?.({ target: { value: val } } as any) : setInternalValue;
+    const [value, setValue] = React.useState(defaultValue ?? '');
+
+    // Sync defaultValue with internal state
+    React.useEffect(() => {
+        setValue(defaultValue ?? '');
+    }, [defaultValue]);
 
     const [open, setOpen] = React.useState(false);
     const [suggestions, setSuggestions] = React.useState<HistoryItem[]>([]);
@@ -177,7 +180,6 @@ export const AutocompleteTextarea = React.forwardRef<HTMLTextAreaElement, Autoco
     const handleChange: React.ChangeEventHandler<HTMLTextAreaElement> = (e) => {
       const v = e.target.value;
       setValue(v);
-      onChange?.(e);
       refresh(v);
     };
 
@@ -186,10 +188,8 @@ export const AutocompleteTextarea = React.forwardRef<HTMLTextAreaElement, Autoco
     };
     
     const handleBlur: React.FocusEventHandler<HTMLTextAreaElement> = (e) => {
-      onBlur?.(e);
       if (rememberOnBlur && value.trim()) {
-        engine.remember(value);
-        onSubmit?.(value.trim());
+        commit(value);
       }
     };
 

@@ -109,8 +109,8 @@ export function ComposerControls({
               <AutocompleteInput
                 id="ticket-name"
                 storageKey="ticket-name"
-                value={activeTicket.name}
-                onChange={(e) => onUpdateActiveTicket({ name: e.target.value })}
+                defaultValue={activeTicket.name}
+                onSubmit={(name) => onUpdateActiveTicket({ name })}
                 className="w-full bg-background/50"
               />
             </div>
@@ -207,8 +207,8 @@ export function ComposerControls({
                     id="new-contact-name"
                     storageKey="contact-name"
                     placeholder="John Doe"
-                    value={newContactName}
-                    onChange={(e) => setNewContactName(e.target.value)}
+                    defaultValue={newContactName}
+                    onSubmit={(value) => setNewContactName(value)}
                   />
                 </div>
                 <div className="space-y-2">
