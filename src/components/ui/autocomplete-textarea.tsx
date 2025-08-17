@@ -102,23 +102,36 @@ function escapeRegExp(s: string) {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-type AutocompleteProps = Omit<React.ComponentProps<typeof Textarea>, 'onSubmit'> & {
+type AutocompleteProps = Omit<React.ComponentProps<typeof Textarea>, 'onSubmit' | 'onChange'> & {
   storageKey?: string;
   maxSuggestions?: number;
   onSubmit?: (value: string) => void;
   rememberOnBlur?: boolean;
+  value?: string;
+  onChange?: React.ChangeEventHandler<HTMLTextAreaElement>;
 };
 
 export const AutocompleteTextarea = React.forwardRef<HTMLTextAreaElement, AutocompleteProps>(
-  ({ id, placeholder, storageKey, maxSuggestions, className, defaultValue, onSubmit, rememberOnBlur = true, ...props}, ref) => {
+  ({ id, placeholder, storageKey, maxSuggestions, className, defaultValue, value: controlledValue, onChange: controlledOnChange, onSubmit, rememberOnBlur = true, ...props}, ref) => {
     const engine = React.useMemo(() => new MemoryAutocomplete({ storageKey }), [storageKey]);
     
-    const [value, setValue] = React.useState(defaultValue ?? '');
-
-    // Sync defaultValue with internal state
-    React.useEffect(() => {
-        setValue(defaultValue ?? '');
-    }, [defaultValue]);
+    const [internalValue, setInternalValue] = React.useState(defaultValue ?? '');
+    const isControlled = controlledValue !== undefined;
+    const value = isControlled ? controlledValue : internalValue;
+    
+    const setValue = (newValue: string) => {
+        if (!isControlled) {
+            setInternalValue(newValue);
+        }
+        // The change event is constructed to be compatible with standard form elements.
+        if (controlledOnChange) {
+          const event = {
+            target: { value: newValue },
+            currentTarget: { value: newValue },
+          } as React.ChangeEvent<HTMLTextAreaElement>;
+          controlledOnChange(event);
+        }
+    }
 
     const [open, setOpen] = React.useState(false);
     const [suggestions, setSuggestions] = React.useState<HistoryItem[]>([]);
@@ -151,6 +164,7 @@ export const AutocompleteTextarea = React.forwardRef<HTMLTextAreaElement, Autoco
     };
     
     const handleKeyDown: React.KeyboardEventHandler<HTMLTextAreaElement> = (e) => {
+      props.onKeyDown?.(e);
       if (!open && (e.key === "ArrowDown" || e.key === "ArrowUp")) {
         refresh(value); setOpen(true); return;
       }
@@ -184,10 +198,12 @@ export const AutocompleteTextarea = React.forwardRef<HTMLTextAreaElement, Autoco
     };
 
     const handleFocus: React.FocusEventHandler<HTMLTextAreaElement> = (e) => {
+      props.onFocus?.(e);
       refresh(value);
     };
     
     const handleBlur: React.FocusEventHandler<HTMLTextAreaElement> = (e) => {
+      props.onBlur?.(e);
       if (rememberOnBlur && value.trim()) {
         commit(value);
       }

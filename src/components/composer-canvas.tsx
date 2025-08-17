@@ -54,6 +54,7 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
     const containerRef = React.useRef<HTMLDivElement>(null);
     const hasInitialized = React.useRef(false);
     const textareaRef = React.useRef<HTMLTextAreaElement>(null);
+    const [editingPreview, setEditingPreview] = React.useState<string>("");
 
     const [draggingState, setDraggingState] = React.useState<{ id: string; offsetX: number; offsetY: number } | null>(null);
     
@@ -63,6 +64,12 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
       isPanning: false,
       panStart: { x: 0, y: 0 },
     });
+
+    React.useEffect(() => {
+      if (editingText) {
+        setEditingPreview(editingText.text);
+      }
+    }, [editingText]);
     
     const redrawCanvas = React.useCallback(() => {
         const canvas = internalCanvasRef.current;
@@ -511,9 +518,8 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
         position: 'absolute',
         top: `${pan.y + (editingText.y * scale)}px`,
         left: `${pan.x + (editingText.x * scale)}px`,
-        width: `${textWidth * scale + 20}px`,
-        minHeight: `${editingText.fontSize * scale * 1.2}px`,
-        height: 'auto',
+        width: `${textWidth * scale * 1.1}px`,
+        height: `${editingText.fontSize * scale * 1.2}px`,
         font: `${editingText.fontSize * scale}px ${editingText.fontFamily}`,
         color: editingText.color,
         transformOrigin: 'top left',
@@ -542,7 +548,8 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
           <AutocompleteTextarea
             ref={textareaRef}
             storageKey="text-element-content"
-            defaultValue={editingText.text}
+            value={editingPreview}
+            onChange={(e) => setEditingPreview(e.target.value)}
             onSubmit={handleInPlaceApply}
             rememberOnBlur={true}
             onKeyDown={(e) => {
@@ -564,5 +571,3 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
   }
 );
 ComposerCanvas.displayName = 'ComposerCanvas';
-
-    
