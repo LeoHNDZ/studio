@@ -3,6 +3,8 @@
 
 import * as React from 'react';
 import type { TextElement } from '@/lib/types';
+import { AutocompleteTextarea } from './ui/autocomplete-textarea';
+import { cn } from '@/lib/utils';
 
 interface ComposerCanvasProps {
   backgroundImage: HTMLImageElement | null;
@@ -407,14 +409,13 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
     const handleEditingFinish = () => {
       setEditingTextId(null);
     };
-
-    const handleTextareaKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-      if (e.key === 'Escape') {
-        e.preventDefault();
+    
+    const handleInPlaceApply = (text: string) => {
+        if(editingTextId) {
+            onUpdateText(editingTextId, { text });
+        }
         handleEditingFinish();
-        internalCanvasRef.current?.focus();
-      }
-    };
+    }
 
     React.useEffect(() => {
       if (editingTextId && textareaRef.current) {
@@ -497,7 +498,9 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
 
       const tempCtx = document.createElement('canvas').getContext('2d');
       if(!tempCtx) return { display: 'none' };
-      tempCtx.font = `${editingText.fontSize * scale}px ${editingText.fontFamily}`;
+      
+      // We need to measure the text with the correct font and scale
+      tempCtx.font = `${editingText.fontSize}px ${editingText.fontFamily}`;
       const metrics = tempCtx.measureText(editingText.text);
       const textWidth = metrics.width;
       
@@ -505,21 +508,11 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
         position: 'absolute',
         top: `${pan.y + (editingText.y * scale)}px`,
         left: `${pan.x + (editingText.x * scale)}px`,
-        width: `${textWidth + 20 * scale}px`,
+        width: `${textWidth * scale + 20 * scale}px`, // Use scaled width
         height: 'auto',
-        minHeight: `${editingText.fontSize * scale * 1.2}px`,
-        background: 'rgba(255, 255, 255, 0.9)',
-        border: `1px solid hsl(var(--ring))`,
-        outline: 'none',
-        padding: '0',
-        margin: '0',
         font: `${editingText.fontSize * scale}px ${editingText.fontFamily}`,
         color: editingText.color,
         transformOrigin: 'top left',
-        resize: 'none',
-        overflow: 'hidden',
-        lineHeight: '1.2',
-        whiteSpace: 'pre-wrap',
         zIndex: 100,
       };
     };
@@ -541,13 +534,24 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
           style={{ cursor: getCursorStyle() }}
         />
         {editingTextId && editingText && (
-          <textarea
+          <AutocompleteTextarea
             ref={textareaRef}
-            value={editingText.text}
-            onChange={(e) => onUpdateText(editingTextId, { text: e.target.value })}
-            onBlur={handleEditingFinish}
-            onKeyDown={handleTextareaKeyDown}
+            storageKey="text-element-content"
+            defaultValue={editingText.text}
+            onSubmit={handleInPlaceApply}
+            rememberOnBlur={true}
+            onKeyDown={(e) => {
+              if(e.key === 'Escape') {
+                e.preventDefault();
+                handleEditingFinish();
+                internalCanvasRef.current?.focus();
+              }
+            }}
             style={calculateTextareaStyle()}
+            className={cn(
+              'absolute resize-none overflow-hidden p-0 m-0 border-ring focus:border-ring focus:ring-0',
+              'bg-transparent'
+            )}
           />
         )}
       </div>

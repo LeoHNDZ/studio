@@ -21,14 +21,14 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { AutocompleteInput } from '@/components/ui/autocomplete-input';
-import { AutocompleteTextarea } from '@/components/ui/autocomplete-textarea';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, Trash2, X, UserPlus, BookUser, Check, RefreshCcw, Copy, BrainCircuit } from 'lucide-react';
+import { Plus, Trash2, X, UserPlus, BookUser, Check, RefreshCcw, BrainCircuit } from 'lucide-react';
 import { Card, CardContent } from './ui/card';
 import { ScrollArea } from './ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
 import { suggestQuote } from '@/ai/flows/suggest-quote';
+import TextTool from './ui/text-tool';
 
 interface ComposerControlsProps {
   onClearBackground: () => void;
@@ -147,12 +147,10 @@ export function ComposerControls({
               <CardContent className="pt-4 space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="text-content">Content</Label>
-                  <AutocompleteTextarea
-                    id="text-content"
-                    storageKey="text-element-content"
-                    defaultValue={selectedText.text}
-                    onSubmit={(text) => onUpdateText(selectedText.id, { text })}
-                    className="bg-background/50"
+                  <TextTool
+                    key={selectedText.id}
+                    initialValue={selectedText.text}
+                    onApply={(text) => onUpdateText(selectedText.id, { text })}
                   />
                 </div>
                 <div className="space-y-2">
