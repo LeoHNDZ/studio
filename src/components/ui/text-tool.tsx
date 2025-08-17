@@ -1,124 +1,60 @@
 
 "use client";
 
-import React, { useRef, useState, useEffect } from "react";
-import { Textarea } from "./textarea";
-import { Button } from "./button";
-import { cn } from "@/lib/utils";
+import React from 'react';
+import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
 
-type TextToolProps = {
-  initialValue?: string;
-  onApply?: (text: string) => void;
-  onCancel?: () => void;
+interface TextToolProps {
+  text: string;
   disabled?: boolean;
-};
+  onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void;
+  onSelect: (e: React.SyntheticEvent<HTMLTextAreaElement, Event>) => void;
+  onKeyDown: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void;
+  onApply: () => void;
+  onCancel?: () => void;
+  selection: { start: number; end: number };
+}
 
-const TextTool: React.FC<TextToolProps> = ({
-  initialValue = "",
+export const TextTool = ({
+  text,
+  disabled,
+  onChange,
+  onSelect,
+  onKeyDown,
   onApply,
   onCancel,
-  disabled = false,
-}) => {
-  const [text, setText] = useState(initialValue);
-  const [selection, setSelection] = useState<{ start: number; end: number }>({
-    start: 0,
-    end: 0,
-  });
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-  
-  // When the initialValue changes (e.g., selecting a new text element),
-  // update the internal state of the tool.
-  useEffect(() => {
-    setText(initialValue);
-  }, [initialValue]);
-
-  useEffect(() => {
-    if (textareaRef.current && selection) {
-      textareaRef.current.setSelectionRange(selection.start, selection.end);
-    }
-  }, [selection, text]);
-
-  const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setText(e.target.value);
-  };
-
-  const handleSelect = (e: React.SyntheticEvent<HTMLTextAreaElement>) => {
-    const target = e.target as HTMLTextAreaElement;
-    setSelection({
-      start: target.selectionStart,
-      end: target.selectionEnd,
-    });
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "a") {
-      e.preventDefault();
-      if (textareaRef.current) {
-        textareaRef.current.select();
-      }
-    }
-    if (e.key === "Escape" && onCancel) {
-      onCancel();
-    }
-    if ((e.ctrlKey || e.metaKey) && e.key === "Enter" && onApply) {
-      onApply(text);
-    }
-  };
-
-  const handleApply = () => {
-    if (onApply) {
-      onApply(text);
-    }
-  };
-
+  selection,
+}: TextToolProps) => {
   return (
-    <div
-      className={cn(
-        "rounded-lg border p-4",
-        disabled ? "bg-muted/50 opacity-70" : "bg-card"
-      )}
-    >
+    <div className={cn("rounded-lg border p-4", disabled ? "bg-muted/50 opacity-70" : "bg-card")}>
       <Textarea
-        ref={textareaRef}
         value={text}
         disabled={disabled}
-        onChange={handleChange}
-        onSelect={handleSelect}
-        onKeyDown={handleKeyDown}
+        onChange={onChange}
+        onSelect={onSelect}
+        onKeyDown={onKeyDown}
         rows={6}
         className={cn(
           "w-full font-mono text-base p-2 rounded border-input",
-           disabled ? "bg-muted/80" : "bg-background"
+          disabled ? "bg-muted/80" : "bg-background"
         )}
         autoFocus
       />
       <div className="mt-2 text-xs text-muted-foreground">
-        {selection.start !== selection.end &&
-          `Selected: [${selection.start} – ${selection.end}]`}
+        {selection.start !== selection.end && `Selected: [${selection.start} – ${selection.end}]`}
       </div>
       <div className="mt-3 flex items-center justify-end gap-2">
-         {onCancel && (
-          <Button
-            onClick={onCancel}
-            disabled={disabled}
-            variant="destructive"
-            size="sm"
-          >
+        {onCancel && (
+          <Button onClick={onCancel} disabled={disabled} variant="ghost" size="sm">
             Cancel
           </Button>
         )}
-        {onApply && (
-           <Button
-            onClick={handleApply}
-            disabled={disabled}
-            size="sm"
-          >
+         <Button onClick={onApply} disabled={disabled} size="sm">
             Apply
           </Button>
-        )}
       </div>
     </div>
   );
 };
-
-export default TextTool;
