@@ -12,8 +12,8 @@ class MemoryAutocomplete {
   private hasStorage = typeof window !== "undefined" && !!window.localStorage;
 
   constructor(opts?: { storageKey?: string; maxHistory?: number }) {
-    this.key = opts?.storageKey ?? "autocomplete.history";
-    this.maxHistory = opts?.maxHistory ?? 500;
+    this.key = `autocomplete:${opts?.storageKey ?? "history"}`;
+    this.maxHistory = opts?.maxHistory ?? 50;
     this.load();
   }
 
@@ -48,13 +48,12 @@ class MemoryAutocomplete {
     } else {
       this.items.set(t, { text: t, count: 1, lastUsed: now });
     }
-    // Enforce cap
     if (this.items.size > this.maxHistory) {
-      const overshoot = this.items.size - this.maxHistory;
-      const ordered = Array.from(this.items.values()).sort(
-        (a, b) => a.lastUsed - b.lastUsed
-      );
-      for (let i = 0; i < overshoot; i++) this.items.delete(ordered[i].text);
+      const ordered = Array.from(this.items.values()).sort((a, b) => a.lastUsed - b.lastUsed);
+      const toDelete = ordered.slice(0, this.items.size - this.maxHistory);
+      for (const item of toDelete) {
+        this.items.delete(item.text);
+      }
     }
     this.save();
   }
@@ -102,37 +101,17 @@ function escapeRegExp(s: string) {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-type AutocompleteProps = Omit<React.ComponentProps<typeof Textarea>, 'onSubmit' | 'onChange'> & {
+type AutocompleteProps = Omit<React.ComponentProps<typeof Textarea>, 'onSubmit'> & {
   storageKey?: string;
   maxSuggestions?: number;
   onSubmit?: (value: string) => void;
   rememberOnBlur?: boolean;
-  value?: string;
-  onChange?: React.ChangeEventHandler<HTMLTextAreaElement>;
 };
 
 export const AutocompleteTextarea = React.forwardRef<HTMLTextAreaElement, AutocompleteProps>(
-  ({ id, placeholder, storageKey, maxSuggestions, className, defaultValue, value: controlledValue, onChange: controlledOnChange, onSubmit, rememberOnBlur = true, ...props}, ref) => {
+  ({ id, placeholder, storageKey, maxSuggestions, className, value, onChange, onSubmit, rememberOnBlur = true, ...props}, ref) => {
     const engine = React.useMemo(() => new MemoryAutocomplete({ storageKey }), [storageKey]);
     
-    const [internalValue, setInternalValue] = React.useState(defaultValue ?? '');
-    const isControlled = controlledValue !== undefined;
-    const value = isControlled ? controlledValue : internalValue;
-    
-    const setValue = (newValue: string) => {
-        if (!isControlled) {
-            setInternalValue(newValue);
-        }
-        // The change event is constructed to be compatible with standard form elements.
-        if (controlledOnChange) {
-          const event = {
-            target: { value: newValue },
-            currentTarget: { value: newValue },
-          } as React.ChangeEvent<HTMLTextAreaElement>;
-          controlledOnChange(event);
-        }
-    }
-
     const [open, setOpen] = React.useState(false);
     const [suggestions, setSuggestions] = React.useState<HistoryItem[]>([]);
     const [highlight, setHighlight] = React.useState<number>(-1);
@@ -156,8 +135,13 @@ export const AutocompleteTextarea = React.forwardRef<HTMLTextAreaElement, Autoco
     }, []);
 
     const commit = (text: string) => {
-      const t = text.trim();
-      setValue(t);
+      const t = text; // Don't trim for textarea
+      if (onChange) {
+        const event = {
+          target: { value: t }
+        } as React.ChangeEvent<HTMLTextAreaElement>;
+        onChange(event);
+      }
       engine.remember(t);
       setOpen(false);
       onSubmit?.(t);
@@ -166,10 +150,12 @@ export const AutocompleteTextarea = React.forwardRef<HTMLTextAreaElement, Autoco
     const handleKeyDown: React.KeyboardEventHandler<HTMLTextAreaElement> = (e) => {
       props.onKeyDown?.(e);
       if (!open && (e.key === "ArrowDown" || e.key === "ArrowUp")) {
-        refresh(value); setOpen(true); return;
+        refresh(value as string); setOpen(true); return;
       }
       if (!open && e.key === "Enter" && !e.shiftKey) {
-        commit(value); return;
+        e.preventDefault();
+        onSubmit?.(value as string);
+        return;
       }
       if (!open) return;
 
@@ -184,7 +170,8 @@ export const AutocompleteTextarea = React.forwardRef<HTMLTextAreaElement, Autoco
           e.preventDefault();
           commit(suggestions[highlight].text);
         } else if (e.key === "Enter" && !e.shiftKey) {
-          commit(value);
+           e.preventDefault();
+           onSubmit?.(value as string);
         }
       } else if (e.key === "Escape") {
         setOpen(false);
@@ -193,24 +180,29 @@ export const AutocompleteTextarea = React.forwardRef<HTMLTextAreaElement, Autoco
 
     const handleChange: React.ChangeEventHandler<HTMLTextAreaElement> = (e) => {
       const v = e.target.value;
-      setValue(v);
+      if (onChange) {
+        onChange(e);
+      }
       refresh(v);
     };
 
     const handleFocus: React.FocusEventHandler<HTMLTextAreaElement> = (e) => {
       props.onFocus?.(e);
-      refresh(value);
+      refresh(value as string);
     };
     
     const handleBlur: React.FocusEventHandler<HTMLTextAreaElement> = (e) => {
       props.onBlur?.(e);
-      if (rememberOnBlur && value.trim()) {
-        commit(value);
+      if (rememberOnBlur && typeof value === 'string' && value.trim()) {
+        engine.remember(value);
+        onSubmit?.(value);
+      } else {
+        onSubmit?.(value as string);
       }
     };
 
     return (
-      <div ref={wrapRef} className={cn("relative", className)}>
+      <div ref={wrapRef} className={cn("relative w-full h-full", className)}>
         <Textarea
           {...props}
           id={id}
@@ -222,6 +214,7 @@ export const AutocompleteTextarea = React.forwardRef<HTMLTextAreaElement, Autoco
           onFocus={handleFocus}
           onBlur={handleBlur}
           spellCheck={false}
+          className="w-full h-full"
         />
         {open && suggestions.length > 0 && (
           <ul

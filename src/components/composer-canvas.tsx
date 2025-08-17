@@ -54,8 +54,7 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
     const containerRef = React.useRef<HTMLDivElement>(null);
     const hasInitialized = React.useRef(false);
     const textareaRef = React.useRef<HTMLTextAreaElement>(null);
-    const [editingPreview, setEditingPreview] = React.useState<string>("");
-
+    
     const [draggingState, setDraggingState] = React.useState<{ id: string; offsetX: number; offsetY: number } | null>(null);
     
     const viewStateRef = React.useRef({
@@ -64,12 +63,6 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
       isPanning: false,
       panStart: { x: 0, y: 0 },
     });
-
-    React.useEffect(() => {
-      if (editingText) {
-        setEditingPreview(editingText.text);
-      }
-    }, [editingText]);
     
     const redrawCanvas = React.useCallback(() => {
         const canvas = internalCanvasRef.current;
@@ -417,6 +410,9 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
     };
 
     const handleEditingFinish = () => {
+      if (editingTextId && editingText?.text.trim() === '') {
+        onDeleteText(editingTextId);
+      }
       setEditingTextId(null);
     };
     
@@ -509,7 +505,6 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
       const tempCtx = document.createElement('canvas').getContext('2d');
       if(!tempCtx) return { display: 'none' };
       
-      // We need to measure the text with the correct font and scale
       tempCtx.font = `${editingText.fontSize}px ${editingText.fontFamily}`;
       const metrics = tempCtx.measureText(editingText.text);
       const textWidth = metrics.width;
@@ -518,8 +513,8 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
         position: 'absolute',
         top: `${pan.y + (editingText.y * scale)}px`,
         left: `${pan.x + (editingText.x * scale)}px`,
-        width: `${textWidth * scale * 1.1}px`,
-        height: `${editingText.fontSize * scale * 1.2}px`,
+        width: `${Math.max(textWidth * scale, 100)}px`,
+        height: `${editingText.fontSize * scale * 1.5}px`,
         font: `${editingText.fontSize * scale}px ${editingText.fontFamily}`,
         color: editingText.color,
         transformOrigin: 'top left',
@@ -548,8 +543,8 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
           <AutocompleteTextarea
             ref={textareaRef}
             storageKey="text-element-content"
-            value={editingPreview}
-            onChange={(e) => setEditingPreview(e.target.value)}
+            value={editingText.text}
+            onChange={(e) => onUpdateText(editingTextId, { text: e.target.value })}
             onSubmit={handleInPlaceApply}
             rememberOnBlur={true}
             onKeyDown={(e) => {
@@ -571,5 +566,3 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
   }
 );
 ComposerCanvas.displayName = 'ComposerCanvas';
-
-    
