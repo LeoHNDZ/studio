@@ -4,6 +4,7 @@
 import React, { useRef, useState, useEffect } from "react";
 import { Textarea } from "./textarea";
 import { Button } from "./button";
+import { cn } from "@/lib/utils";
 
 type TextToolProps = {
   initialValue?: string;
