@@ -3,8 +3,8 @@ import * as React from "react";
 import { cn } from "@/lib/utils";
 import { Textarea } from "./textarea";
 
-type HistoryItem = { text: string; count: number; lastUsed: number };
 export type AutocompleteSuggestion = { text: string, meta?: string };
+type HistoryItem = { text: string; count: number; lastUsed: number };
 
 class MemoryAutocomplete {
   private key: string;
@@ -150,16 +150,15 @@ export const AutocompleteTextarea = React.forwardRef<HTMLTextAreaElement, Autoco
     }, []);
 
     const commit = (text: string) => {
-      const t = text; // Don't trim for textarea
       if (onChange) {
         const event = {
-          target: { value: t }
+          target: { value: text }
         } as React.ChangeEvent<HTMLTextAreaElement>;
         onChange(event);
       }
-      engine.remember(t);
+      engine.remember(text);
       setOpen(false);
-      onSubmit?.(t);
+      onSubmit?.(text);
     };
     
     const handleKeyDown: React.KeyboardEventHandler<HTMLTextAreaElement> = (e) => {
@@ -213,7 +212,9 @@ export const AutocompleteTextarea = React.forwardRef<HTMLTextAreaElement, Autoco
       if (rememberOnBlur && typeof value === 'string' && value.trim()) {
         engine.remember(value);
       }
-      // onSubmit is now only called on Enter or explicit action, not blur
+      if (onSubmit) {
+         onSubmit(value as string);
+      }
     };
 
     return (

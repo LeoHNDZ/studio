@@ -515,7 +515,7 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
         position: 'absolute',
         top: `${pan.y + (editingText.y * scale)}px`,
         left: `${pan.x + (editingText.x * scale)}px`,
-        width: `${Math.max(textWidth * scale, 100)}px`,
+        width: `${(textWidth * scale) + 20}px`,
         height: `${editingText.fontSize * scale * 1.5}px`,
         font: `${editingText.fontSize * scale}px ${editingText.fontFamily}`,
         color: editingText.color,

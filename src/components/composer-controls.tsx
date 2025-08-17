@@ -28,7 +28,6 @@ import { Card, CardContent } from './ui/card';
 import { ScrollArea } from './ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
 import { suggestQuote } from '@/ai/flows/suggest-quote';
-import { TextTool } from './ui/text-tool';
 
 interface ComposerControlsProps {
   onClearBackground: () => void;
@@ -70,19 +69,6 @@ export function ComposerControls({
   const [isSuggesting, setIsSuggesting] = React.useState(false);
   const { toast } = useToast();
 
-  // State for the controlled TextTool
-  const [editingText, setEditingText] = React.useState('');
-  const [selection, setSelection] = React.useState({ start: 0, end: 0 });
-  const textareaRef = React.useRef<HTMLTextAreaElement>(null);
-
-  React.useEffect(() => {
-    if (selectedText) {
-      setEditingText(selectedText.text);
-    } else {
-      setEditingText('');
-    }
-  }, [selectedText]);
-  
   const handleAddContact = () => {
     if (newContactName.trim() && newContactDetails.trim()) {
       onAddContact(newContactName.trim(), newContactDetails.trim());
@@ -108,36 +94,6 @@ export function ComposerControls({
     } finally {
       setIsSuggesting(false);
       setQuoteTopic('');
-    }
-  };
-
-  const handleTextToolApply = () => {
-    if (selectedText) {
-      onUpdateText(selectedText.id, { text: editingText });
-    }
-  };
-
-  const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setEditingText(e.target.value);
-  };
-
-  const handleTextSelect = (e: React.SyntheticEvent<HTMLTextAreaElement>) => {
-    const target = e.target as HTMLTextAreaElement;
-    setSelection({
-      start: target.selectionStart,
-      end: target.selectionEnd,
-    });
-  };
-
-  const handleTextKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'a') {
-      e.preventDefault();
-      if (textareaRef.current) {
-        textareaRef.current.select();
-      }
-    }
-    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
-      handleTextToolApply();
     }
   };
 
@@ -190,14 +146,12 @@ export function ComposerControls({
               <CardContent className="pt-4 space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="text-content">Content</Label>
-                   <TextTool
-                      key={selectedText.id}
-                      text={editingText}
-                      onChange={handleTextChange}
-                      onSelect={handleTextSelect}
-                      onKeyDown={handleTextKeyDown}
-                      onApply={handleTextToolApply}
-                      selection={selection}
+                   <Textarea
+                      id="text-content"
+                      value={selectedText.text}
+                      onChange={(e) => onUpdateText(selectedText.id, { text: e.target.value })}
+                      rows={4}
+                      className="bg-background/50"
                     />
                 </div>
                 <div className="space-y-2">
