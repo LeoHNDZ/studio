@@ -3,7 +3,7 @@
 
 import * as React from 'react';
 import type { TextElement } from '@/lib/types';
-import { AutocompleteTextarea } from './ui/autocomplete-textarea';
+import { AutocompleteTextarea, type AutocompleteSuggestion } from './ui/autocomplete-textarea';
 import { cn } from '@/lib/utils';
 
 interface ComposerCanvasProps {
@@ -22,6 +22,7 @@ interface ComposerCanvasProps {
   pendingText: string | null;
   onTextAdd: (text: string, options: Partial<Omit<TextElement, 'id' | 'text'>>) => void;
   onCompleteAddText: () => void;
+  autocompleteSuggestions?: AutocompleteSuggestion[];
 }
 
 export interface ComposerCanvasHandle {
@@ -49,6 +50,7 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
     pendingText,
     onTextAdd,
     onCompleteAddText,
+    autocompleteSuggestions,
    }, ref) => {
     const internalCanvasRef = React.useRef<HTMLCanvasElement>(null);
     const containerRef = React.useRef<HTMLDivElement>(null);
@@ -559,6 +561,7 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
               'absolute resize-none overflow-hidden p-0 m-0 border-ring focus:border-ring focus:ring-0',
               'bg-transparent'
             )}
+            suggestions={autocompleteSuggestions}
           />
         )}
       </div>

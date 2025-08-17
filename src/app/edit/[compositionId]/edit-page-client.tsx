@@ -319,6 +319,11 @@ export default function EditPageClient({ compositionId }: EditPageClientProps) {
     
     window.open(`/edit/${newTicket.id}`, '_blank');
   };
+  
+  const contactsSuggestions = React.useMemo(() => {
+    return contacts.map(c => ({ text: `${c.name}\n${c.details}` }));
+  }, [contacts]);
+
 
   if (!ticket) {
     return (
@@ -404,6 +409,7 @@ export default function EditPageClient({ compositionId }: EditPageClientProps) {
                 pendingText={pendingText}
                 onTextAdd={addText}
                 onCompleteAddText={() => setPendingText(null)}
+                autocompleteSuggestions={contactsSuggestions}
               />
             </main>
           </div>

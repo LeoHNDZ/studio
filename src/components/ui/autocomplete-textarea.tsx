@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import { Textarea } from "./textarea";
 
 type HistoryItem = { text: string; count: number; lastUsed: number };
+export type AutocompleteSuggestion = { text: string, meta?: string };
 
 class MemoryAutocomplete {
   private key: string;
@@ -63,25 +64,38 @@ class MemoryAutocomplete {
     this.save();
   }
 
-  suggest(query: string, max: number = 8): HistoryItem[] {
+  suggest(query: string, predefined: AutocompleteSuggestion[] = [], max: number = 8): AutocompleteSuggestion[] {
     const q = query.trim().toLowerCase();
-    const all = Array.from(this.items.values());
+    
+    // Process history items
+    const allHistory = Array.from(this.items.values());
+    let historySuggestions: AutocompleteSuggestion[] = [];
+
     if (!q) {
-      return all
+      historySuggestions = allHistory
         .sort((a, b) => {
           if (b.lastUsed !== a.lastUsed) return b.lastUsed - a.lastUsed;
           return b.count - a.count;
         })
-        .slice(0, max);
+        .map(h => ({ text: h.text, meta: `Used x${h.count}`}));
+    } else {
+       historySuggestions = allHistory
+        .filter((i) => i.text.toLowerCase().includes(q))
+        .map((i) => ({ item: i, score: this.score(i, q) }))
+        .sort((a, b) => b.score - a.score)
+        .map((s) => ({ text: s.item.text, meta: `Used x${s.item.count}` }));
     }
-    const scored = all
-      .filter((i) => i.text.toLowerCase().includes(q))
-      .map((i) => ({ item: i, score: this.score(i, q) }))
-      .sort((a, b) => b.score - a.score)
-      .slice(0, max)
-      .map((s) => s.item);
-    return scored;
-  }
+
+    // Process predefined suggestions
+    const predefinedSuggestions = predefined.filter(p => p.text.toLowerCase().includes(q));
+
+    // Combine and deduplicate
+    const combined = [...predefinedSuggestions, ...historySuggestions];
+    const unique = Array.from(new Map(combined.map(item => [item.text, item])).values());
+    
+    return unique.slice(0, max);
+}
+
 
   private score(i: HistoryItem, q: string): number {
     const text = i.text.toLowerCase();
@@ -106,21 +120,22 @@ type AutocompleteProps = Omit<React.ComponentProps<typeof Textarea>, 'onSubmit'>
   maxSuggestions?: number;
   onSubmit?: (value: string) => void;
   rememberOnBlur?: boolean;
+  suggestions?: AutocompleteSuggestion[];
 };
 
 export const AutocompleteTextarea = React.forwardRef<HTMLTextAreaElement, AutocompleteProps>(
-  ({ id, placeholder, storageKey, maxSuggestions, className, value, onChange, onSubmit, rememberOnBlur = true, ...props}, ref) => {
+  ({ id, placeholder, storageKey, maxSuggestions, className, value, onChange, onSubmit, rememberOnBlur = true, suggestions: predefinedSuggestions, ...props}, ref) => {
     const engine = React.useMemo(() => new MemoryAutocomplete({ storageKey }), [storageKey]);
     
     const [open, setOpen] = React.useState(false);
-    const [suggestions, setSuggestions] = React.useState<HistoryItem[]>([]);
+    const [suggestions, setSuggestions] = React.useState<AutocompleteSuggestion[]>([]);
     const [highlight, setHighlight] = React.useState<number>(-1);
 
     const wrapRef = React.useRef<HTMLDivElement>(null);
     const listboxId = (id ?? "ac") + "-listbox";
 
     const refresh = (q: string) => {
-      const s = engine.suggest(q, maxSuggestions);
+      const s = engine.suggest(q, predefinedSuggestions, maxSuggestions);
       setSuggestions(s);
       setOpen(s.length > 0);
       setHighlight(s.length ? 0 : -1);
@@ -155,6 +170,7 @@ export const AutocompleteTextarea = React.forwardRef<HTMLTextAreaElement, Autoco
       if (!open && e.key === "Enter" && !e.shiftKey) {
         e.preventDefault();
         onSubmit?.(value as string);
+        engine.remember(value as string);
         return;
       }
       if (!open) return;
@@ -172,6 +188,7 @@ export const AutocompleteTextarea = React.forwardRef<HTMLTextAreaElement, Autoco
         } else if (e.key === "Enter" && !e.shiftKey) {
            e.preventDefault();
            onSubmit?.(value as string);
+           engine.remember(value as string);
         }
       } else if (e.key === "Escape") {
         setOpen(false);
@@ -195,10 +212,8 @@ export const AutocompleteTextarea = React.forwardRef<HTMLTextAreaElement, Autoco
       props.onBlur?.(e);
       if (rememberOnBlur && typeof value === 'string' && value.trim()) {
         engine.remember(value);
-        onSubmit?.(value);
-      } else {
-        onSubmit?.(value as string);
       }
+      // onSubmit is now only called on Enter or explicit action, not blur
     };
 
     return (
@@ -235,9 +250,7 @@ export const AutocompleteTextarea = React.forwardRef<HTMLTextAreaElement, Autoco
                   onMouseDown={(e) => { e.preventDefault(); commit(s.text); }}
                 >
                   <span className="ac-option-text">{s.text}</span>
-                  <span className="ac-meta">
-                    {new Date(s.lastUsed).toLocaleDateString()} • ×{s.count}
-                  </span>
+                  {s.meta && <span className="ac-meta">{s.meta}</span>}
                 </li>
               );
             })}
