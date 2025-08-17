@@ -108,13 +108,18 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
         
         texts.forEach((text) => {
             ctx.font = `${text.fontSize}px ${text.fontFamily}`;
+            if (text.id === editingTextId) {
+                ctx.globalAlpha = 0.2;
+            } else {
+                 ctx.globalAlpha = 1;
+            }
             ctx.fillStyle = text.color;
             ctx.textAlign = 'left';
             ctx.textBaseline = 'top';
             ctx.fillText(text.text, text.x, text.y);
+            ctx.globalAlpha = 1;
 
-            if (text.id === selectedTextId) {
-                ctx.font = `${text.fontSize}px ${text.fontFamily}`;
+            if (text.id === selectedTextId && text.id !== editingTextId) {
                 const metrics = ctx.measureText(text.text);
                 const width = metrics.width;
                 const height = text.fontSize;
@@ -506,12 +511,14 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
         position: 'absolute',
         top: `${pan.y + (editingText.y * scale)}px`,
         left: `${pan.x + (editingText.x * scale)}px`,
-        width: `${textWidth * scale + 20 * scale}px`, // Use scaled width
+        width: `${textWidth * scale + 20}px`,
+        minHeight: `${editingText.fontSize * scale * 1.2}px`,
         height: 'auto',
         font: `${editingText.fontSize * scale}px ${editingText.fontFamily}`,
         color: editingText.color,
         transformOrigin: 'top left',
         zIndex: 100,
+        background: 'transparent',
       };
     };
 
@@ -557,3 +564,5 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
   }
 );
 ComposerCanvas.displayName = 'ComposerCanvas';
+
+    
