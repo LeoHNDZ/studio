@@ -3,7 +3,7 @@
 
 import React, { useRef, useEffect } from "react";
 import { Textarea } from "./textarea";
-import Textcomplete from "@yuku/textcomplete";
+import Textcomplete from "textcomplete";
 import { cn } from "@/lib/utils";
 
 export interface CanvasAutocompleteProps extends React.ComponentPropsWithoutRef<typeof Textarea> {
