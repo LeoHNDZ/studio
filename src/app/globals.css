@@ -106,4 +106,17 @@
   .ac-meta {
     @apply text-xs text-muted-foreground;
   }
+
+  .textcomplete-dropdown {
+    @apply z-50 mt-1 max-h-60 w-full overflow-auto rounded-md bg-popover text-popover-foreground shadow-lg;
+    list-style-type: none;
+    padding: 0;
+    margin: 0;
+  }
+  .textcomplete-item {
+    @apply relative cursor-pointer select-none p-2 text-sm;
+  }
+  .textcomplete-item-active {
+    @apply bg-accent text-accent-foreground;
+  }
 }

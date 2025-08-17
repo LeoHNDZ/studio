@@ -321,7 +321,7 @@ export default function EditPageClient({ compositionId }: EditPageClientProps) {
   };
   
   const contactsSuggestions = React.useMemo(() => {
-    return contacts.map(c => ({ text: `${c.name}\n${c.details}` }));
+    return contacts.map(c => c.name);
   }, [contacts]);
 
 

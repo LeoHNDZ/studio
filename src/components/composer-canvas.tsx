@@ -3,7 +3,7 @@
 
 import * as React from 'react';
 import type { TextElement } from '@/lib/types';
-import { AutocompleteTextarea, type AutocompleteSuggestion } from './ui/autocomplete-textarea';
+import CanvasAutocomplete from './ui/canvas-autocomplete';
 import { cn } from '@/lib/utils';
 
 interface ComposerCanvasProps {
@@ -22,7 +22,7 @@ interface ComposerCanvasProps {
   pendingText: string | null;
   onTextAdd: (text: string, options: Partial<Omit<TextElement, 'id' | 'text'>>) => void;
   onCompleteAddText: () => void;
-  autocompleteSuggestions?: AutocompleteSuggestion[];
+  autocompleteSuggestions?: string[];
 }
 
 export interface ComposerCanvasHandle {
@@ -418,13 +418,6 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
       setEditingTextId(null);
     };
     
-    const handleInPlaceApply = (text: string) => {
-        if(editingTextId) {
-            onUpdateText(editingTextId, { text });
-        }
-        handleEditingFinish();
-    }
-
     React.useEffect(() => {
       if (editingTextId && textareaRef.current) {
         textareaRef.current.focus();
@@ -542,18 +535,18 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
           style={{ cursor: getCursorStyle() }}
         />
         {editingTextId && editingText && (
-          <AutocompleteTextarea
-            ref={textareaRef}
-            storageKey="text-element-content"
+          <CanvasAutocomplete
             value={editingText.text}
             onChange={(e) => onUpdateText(editingTextId, { text: e.target.value })}
-            onSubmit={handleInPlaceApply}
-            rememberOnBlur={true}
             onKeyDown={(e) => {
               if(e.key === 'Escape') {
                 e.preventDefault();
                 handleEditingFinish();
                 internalCanvasRef.current?.focus();
+              }
+              if(e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                handleEditingFinish();
               }
             }}
             style={calculateTextareaStyle()}
@@ -561,7 +554,8 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
               'absolute resize-none overflow-hidden p-0 m-0 border-ring focus:border-ring focus:ring-0',
               'bg-transparent'
             )}
-            suggestions={autocompleteSuggestions}
+            suggestions={autocompleteSuggestions || []}
+            ref={textareaRef}
           />
         )}
       </div>
