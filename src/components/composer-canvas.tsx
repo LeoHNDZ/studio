@@ -510,6 +510,7 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
         left: `${pan.x + (editingText.x * scale)}px`,
         width: `${textWidth * scale + 20 * scale}px`, // Use scaled width
         height: 'auto',
+        minHeight: `${editingText.fontSize * scale}px`,
         font: `${editingText.fontSize * scale}px ${editingText.fontFamily}`,
         color: editingText.color,
         transformOrigin: 'top left',

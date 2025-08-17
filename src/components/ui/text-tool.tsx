@@ -65,6 +65,12 @@ const TextTool: React.FC<TextToolProps> = ({
     }
   };
 
+  const handleApply = () => {
+    if (onApply) {
+      onApply(text);
+    }
+  };
+
   return (
     <div
       className={cn(
@@ -103,7 +109,7 @@ const TextTool: React.FC<TextToolProps> = ({
         )}
         {onApply && (
            <Button
-            onClick={() => onApply(text)}
+            onClick={handleApply}
             disabled={disabled}
             size="sm"
           >
