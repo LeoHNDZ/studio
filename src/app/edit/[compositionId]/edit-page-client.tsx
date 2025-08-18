@@ -152,7 +152,7 @@ export default function EditPageClient({ compositionId }: EditPageClientProps) {
       text,
       x: options?.x ?? canvas.width / 4,
       y: options?.y ?? canvas.height / 4,
-      fontSize: 48,
+      fontSize: 47,
       fontFamily: 'Inter',
       color: '#000000',
       ...options,
