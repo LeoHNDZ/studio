@@ -28,7 +28,6 @@ interface ComposerCanvasProps {
   pendingText: string | null;
   onTextAdd: (text: string, options: Partial<Omit<TextElement, 'id' | 'text'>>) => void;
   onCompleteAddText: () => void;
-  autocompleteSuggestions?: string[];
 }
 
 export interface ComposerCanvasHandle {
@@ -480,7 +479,7 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
 
       const { x, y, clientX, clientY } = getTransformedMousePos(e);
       setContextMenu({ open: true, x: clientX, y: clientY, canvasX: x, canvasY: y });
-    }, [editingTextId, getTransformedMousePos]);
+    }, [editingTextId]);
 
 
     React.useEffect(() => {
@@ -606,5 +605,3 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
   }
 );
 ComposerCanvas.displayName = 'ComposerCanvas';
-
-    
