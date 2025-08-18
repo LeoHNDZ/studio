@@ -5,6 +5,12 @@ import * as React from 'react';
 import type { TextElement } from '@/lib/types';
 import CanvasAutocomplete from './ui/canvas-autocomplete';
 import { cn } from '@/lib/utils';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 
 interface ComposerCanvasProps {
   backgroundImage: HTMLImageElement | null;
@@ -58,6 +64,7 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
     const textareaRef = React.useRef<HTMLTextAreaElement>(null);
     
     const [draggingState, setDraggingState] = React.useState<{ id: string; offsetX: number; offsetY: number } | null>(null);
+    const [contextMenu, setContextMenu] = React.useState<{ open: boolean; x: number; y: number, canvasX: number, canvasY: number } | null>(null);
     
     const viewStateRef = React.useRef({
       scale: 1,
@@ -470,10 +477,12 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
 
     const handleContextMenu = React.useCallback((e: MouseEvent) => {
       e.preventDefault();
-      if(editingTextId) return;
-      const { x, y } = getTransformedMousePos(e);
-      onTextAdd('New Text', { x, y });
-    }, [onTextAdd, editingTextId]);
+      if (editingTextId) return;
+
+      const { x, y, clientX, clientY } = getTransformedMousePos(e);
+      setContextMenu({ open: true, x: clientX, y: clientY, canvasX: x, canvasY: y });
+    }, [editingTextId, getTransformedMousePos]);
+
 
     React.useEffect(() => {
         redrawCanvas();
@@ -530,12 +539,35 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
         background: 'transparent',
       };
     };
+    
+    const onContextMenuSelect = (option: 'text' | 'date') => {
+      if (!contextMenu) return;
+      const { canvasX, canvasY } = contextMenu;
+      
+      let textToAdd = 'New Text';
+      if (option === 'date') {
+        textToAdd = new Date().toLocaleDateString();
+      }
+      
+      onTextAdd(textToAdd, { x: canvasX, y: canvasY });
+      setContextMenu(null);
+    }
 
     return (
       <div 
         ref={containerRef} 
         className="w-full h-full rounded-lg bg-card/50 shadow-inner overflow-hidden flex justify-center items-center relative"
       >
+        <DropdownMenu open={contextMenu?.open} onOpenChange={(open) => setContextMenu(prev => prev ? {...prev, open} : null)}>
+            <DropdownMenuTrigger asChild>
+                <div style={{ position: 'fixed', left: contextMenu?.x, top: contextMenu?.y }} />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+                <DropdownMenuItem onClick={() => onContextMenuSelect('text')}>Add Text</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => onContextMenuSelect('date')}>Add Date</DropdownMenuItem>
+            </DropdownMenuContent>
+        </DropdownMenu>
+
         <canvas
           ref={internalCanvasRef}
           onMouseDown={handleMouseDown}
@@ -576,6 +608,5 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
   }
 );
 ComposerCanvas.displayName = 'ComposerCanvas';
-
 
     
