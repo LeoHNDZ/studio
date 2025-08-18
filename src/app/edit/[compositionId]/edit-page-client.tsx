@@ -16,7 +16,7 @@ import {
 import { ComposerControls } from '@/components/composer-controls';
 import { ComposerCanvas, type ComposerCanvasHandle } from '@/components/composer-canvas';
 import { Button } from '@/components/ui/button';
-import { Download, Printer, Image as ImageIcon, RefreshCcw, ArrowLeft, Copy } from 'lucide-react';
+import { Download, Printer, Image as ImageIcon, RefreshCcw, ArrowLeft, Copy, Undo2, Redo2 } from 'lucide-react';
 import { nanoid } from 'nanoid';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
@@ -247,6 +247,8 @@ export default function EditPageClient({ compositionId }: EditPageClientProps) {
           <header className="flex-shrink-0 flex items-center justify-between p-2 border-b bg-card/50 backdrop-blur-sm">
             <SidebarTrigger />
             <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={textStore.undo} disabled={!textStore.canUndo}><Undo2 className="mr-2 h-4 w-4" />Undo</Button>
+              <Button variant="outline" size="sm" onClick={textStore.redo} disabled={!textStore.canRedo}><Redo2 className="mr-2 h-4 w-4" />Redo</Button>
               <Button variant="outline" size="sm" onClick={() => canvasRef.current?.resetView()}><RefreshCcw className="mr-2 h-4 w-4" />Reset View</Button>
               <Button variant="outline" size="sm" onClick={() => handlePrint(false)}><Printer className="mr-2 h-4 w-4" />Print Text</Button>
               <Button variant="outline" size="sm" onClick={() => handlePrint(true)} disabled={!backgroundImage}><ImageIcon className="mr-2 h-4 w-4" />Print with BG</Button>

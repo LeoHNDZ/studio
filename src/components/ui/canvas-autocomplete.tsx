@@ -34,7 +34,7 @@ export function CanvasAutocomplete({
 
   // Filter suggestions based on current input
   const filteredSuggestions = React.useMemo(() => {
-    if (!value || value.length < 3) return [];
+    if (!value || value.length < 2) return [];
     
     const query = value.toLowerCase();
     return suggestions

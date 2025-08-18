@@ -61,6 +61,7 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
    }, ref) => {
     const internalCanvasRef = React.useRef<HTMLCanvasElement>(null);
     const containerRef = React.useRef<HTMLDivElement>(null);
+    const textEditorRef = React.useRef<HTMLDivElement>(null);
     const hasInitialized = React.useRef(false);
     
     const [draggingState, setDraggingState] = React.useState<{ id: string; offsetX: number; offsetY: number } | null>(null);
@@ -80,23 +81,36 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
       setEditingTextId(null);
     }, [editingTextId, editingText, onDeleteText, setEditingTextId]);
 
-    // Generate autocomplete suggestions from existing text tokens
+    // Generate autocomplete suggestions from existing text tokens (n-grams up to length 4)
     const suggestions = React.useMemo((): AutocompleteSuggestion[] => {
-      const words = new Set<string>();
+      const phrases = new Set<string>();
       
       texts.forEach(text => {
-        const tokens = text.text
+        const words = text.text
           .split(/\s+/)
-          .map(token => token.trim())
-          .filter(token => token.length >= 3);
+          .map(word => word.trim())
+          .filter(word => word.length > 0);
         
-        tokens.forEach(token => words.add(token));
+        // Generate n-grams of length 1 to 4
+        for (let i = 0; i < words.length; i++) {
+          for (let len = 1; len <= Math.min(4, words.length - i); len++) {
+            const ngram = words.slice(i, i + len).join(' ');
+            if (ngram.length >= 2) { // Only include phrases with at least 2 characters
+              phrases.add(ngram);
+            }
+          }
+        }
       });
 
-      return Array.from(words)
-        .filter(word => word.length >= 3)
-        .map(word => ({ value: word }))
-        .sort((a, b) => a.value.localeCompare(b.value));
+      return Array.from(phrases)
+        .map(phrase => ({ value: phrase }))
+        .sort((a, b) => {
+          // Sort by frequency (longer phrases first, then alphabetically)
+          if (a.value.split(' ').length !== b.value.split(' ').length) {
+            return b.value.split(' ').length - a.value.split(' ').length;
+          }
+          return a.value.localeCompare(b.value);
+        });
     }, [texts]);
 
     // Get canvas rect for overlay positioning
@@ -580,6 +594,25 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
         }
     }, [handleWheel, handleMouseUp, handleContextMenu]);
 
+    // Outside click detection for text editing
+    React.useEffect(() => {
+        if (!editingTextId) return;
+
+        const handleOutsideClick = (e: MouseEvent) => {
+            // Check if click is outside the text editor overlay
+            if (textEditorRef.current && !textEditorRef.current.contains(e.target as Node)) {
+                handleEditingFinish();
+            }
+        };
+
+        // Use capture phase to catch the event before it reaches other handlers
+        document.addEventListener('mousedown', handleOutsideClick, true);
+        
+        return () => {
+            document.removeEventListener('mousedown', handleOutsideClick, true);
+        };
+    }, [editingTextId, handleEditingFinish]);
+
     const getCursorStyle = () => {
       if (pendingText) return 'crosshair';
       if (viewStateRef.current.isPanning || draggingState) return 'grabbing';
@@ -628,6 +661,7 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
         />
         {editingTextId && editingText && (
           <TextEditorOverlay
+            ref={textEditorRef}
             editingText={{
               ...editingText,
               alignment: (editingText as any).alignment || 'left',
