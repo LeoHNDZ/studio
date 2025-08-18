@@ -28,6 +28,8 @@ interface ComposerCanvasProps {
   pendingText: string | null;
   onTextAdd: (text: string, options: Partial<Omit<TextElement, 'id' | 'text'>>) => void;
   onCompleteAddText: () => void;
+  onDragEnd?: (draggedTextId: string, initialPosition: { x: number; y: number }, finalPosition: { x: number; y: number }) => void;
+  onEditingFinish?: () => void;
 }
 
 export interface ComposerCanvasHandle {
@@ -55,13 +57,20 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
     pendingText,
     onTextAdd,
     onCompleteAddText,
+    onDragEnd,
+    onEditingFinish,
    }, ref) => {
     const internalCanvasRef = React.useRef<HTMLCanvasElement>(null);
     const containerRef = React.useRef<HTMLDivElement>(null);
     const hasInitialized = React.useRef(false);
     const textareaRef = React.useRef<HTMLTextAreaElement>(null);
     
-    const [draggingState, setDraggingState] = React.useState<{ id: string; offsetX: number; offsetY: number } | null>(null);
+    const [draggingState, setDraggingState] = React.useState<{ 
+      id: string; 
+      offsetX: number; 
+      offsetY: number;
+      initialPosition: { x: number; y: number };
+    } | null>(null);
     const [contextMenu, setContextMenu] = React.useState<{ open: boolean; x: number; y: number, canvasX: number, canvasY: number } | null>(null);
     
     const viewStateRef = React.useRef({
@@ -75,8 +84,12 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
       if (editingTextId && editingText?.text.trim() === '') {
         onDeleteText(editingTextId);
       }
-      setEditingTextId(null);
-    }, [editingTextId, editingText, onDeleteText, setEditingTextId]);
+      if (onEditingFinish) {
+        onEditingFinish();
+      } else {
+        setEditingTextId(null);
+      }
+    }, [editingTextId, editingText, onDeleteText, onEditingFinish, setEditingTextId]);
     
     const redrawCanvas = React.useCallback(() => {
         const canvas = internalCanvasRef.current;
@@ -353,6 +366,7 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
             id: text.id,
             offsetX: x - text.x,
             offsetY: y - text.y,
+            initialPosition: { x: text.x, y: text.y },
           });
           hit = true;
           break;
@@ -395,9 +409,20 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
           viewStateRef.current.isPanning = false;
         }
         if (draggingState) {
+          // Call drag end callback if provided
+          if (onDragEnd) {
+            const draggedText = texts.find(t => t.id === draggingState.id);
+            if (draggedText) {
+              onDragEnd(
+                draggingState.id,
+                draggingState.initialPosition,
+                { x: draggedText.x, y: draggedText.y }
+              );
+            }
+          }
           setDraggingState(null);
         }
-    }, [draggingState]);
+    }, [draggingState, onDragEnd, texts]);
 
     const handleDoubleClick = (e: React.MouseEvent) => {
       const { x, y } = getTransformedMousePos(e);

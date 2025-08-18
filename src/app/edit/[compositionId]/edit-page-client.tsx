@@ -19,6 +19,8 @@ import { nanoid } from 'nanoid';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { useHistory, type HistoryState } from '@/hooks/use-history';
+import { HistoryControls } from '@/components/history-controls';
 
 interface EditPageClientProps {
   compositionId: string;
@@ -38,6 +40,65 @@ export default function EditPageClient({ compositionId }: EditPageClientProps) {
   const { toast } = useToast();
   
   const [pendingText, setPendingText] = React.useState<string | null>(null);
+  
+  // Initialize history system
+  const history = useHistory({ maxSize: 100 });
+  
+  // Track if we're in an editing session to handle commits properly
+  const [isEditingSession, setIsEditingSession] = React.useState(false);
+
+  // History-aware text operations
+  const pushToHistory = React.useCallback((texts: TextElement[], selectedId?: string | null) => {
+    const state: HistoryState = {
+      texts: history.serializeTexts(texts),
+      selectedId: selectedId || undefined,
+    };
+    history.push(state);
+  }, [history]);
+  
+  const beginEditingSession = React.useCallback((textId: string | null) => {
+    if (textId && !isEditingSession && ticket) {
+      // Push current state to history at start of editing session
+      pushToHistory(ticket.texts, selectedTextId);
+      setIsEditingSession(true);
+    }
+    setEditingTextId(textId);
+  }, [isEditingSession, ticket, selectedTextId, pushToHistory]);
+  
+  const finishEditingSession = React.useCallback(() => {
+    if (isEditingSession && ticket) {
+      // Commit final state to history at end of editing session
+      pushToHistory(ticket.texts, selectedTextId);
+      setIsEditingSession(false);
+    }
+    setEditingTextId(null);
+  }, [isEditingSession, ticket, selectedTextId, pushToHistory]);
+  
+  const handleHistoryUndo = React.useCallback(() => {
+    // If editing, finish the edit session first
+    if (editingTextId) {
+      finishEditingSession();
+    }
+    
+    const previousState = history.undo();
+    if (previousState && ticket) {
+      updateTicket({ texts: previousState.texts });
+      setSelectedTextId(previousState.selectedId || null);
+    }
+  }, [history, editingTextId, ticket, finishEditingSession]);
+  
+  const handleHistoryRedo = React.useCallback(() => {
+    // If editing, finish the edit session first  
+    if (editingTextId) {
+      finishEditingSession();
+    }
+    
+    const nextState = history.redo();
+    if (nextState && ticket) {
+      updateTicket({ texts: nextState.texts });
+      setSelectedTextId(nextState.selectedId || null);
+    }
+  }, [history, editingTextId, ticket, finishEditingSession]);
 
   React.useEffect(() => {
     if (!ticketId) return;
@@ -103,6 +164,40 @@ export default function EditPageClient({ compositionId }: EditPageClientProps) {
     }
   }, []);
 
+  // Initialize history with first state when ticket loads
+  React.useEffect(() => {
+    if (ticket && !history.present) {
+      pushToHistory(ticket.texts, selectedTextId);
+    }
+  }, [ticket, history.present, pushToHistory, selectedTextId]);
+
+  // Keyboard shortcuts for undo/redo
+  React.useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      // Only handle if Ctrl/Cmd is pressed
+      if (!(event.metaKey || event.ctrlKey)) return;
+      
+      if (event.key === 'z' || event.key === 'Z') {
+        if (event.shiftKey) {
+          // Shift+Cmd/Ctrl+Z -> Redo
+          event.preventDefault();
+          handleHistoryRedo();
+        } else {
+          // Cmd/Ctrl+Z -> Undo
+          event.preventDefault();
+          handleHistoryUndo();
+        }
+      } else if (event.key === 'y' || event.key === 'Y') {
+        // Cmd/Ctrl+Y -> Redo (alternative shortcut)
+        event.preventDefault();
+        handleHistoryRedo();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [handleHistoryUndo, handleHistoryRedo]);
+
   const updateTicket = (updates: Partial<Ticket>) => {
     if (!ticket) return;
     setTicket(t => t ? { ...t, ...updates } : null);
@@ -161,6 +256,9 @@ export default function EditPageClient({ compositionId }: EditPageClientProps) {
     const newTexts = [...ticket.texts, newText];
     updateTicket({ texts: newTexts });
     setSelectedTextId(newText.id);
+    
+    // Push to history after adding text
+    pushToHistory(newTexts, newText.id);
   };
   
   const startPlacingText = (text: string) => {
@@ -169,10 +267,15 @@ export default function EditPageClient({ compositionId }: EditPageClientProps) {
   };
 
 
-  const updateText = (id: string, newProps: Partial<TextElement>) => {
+  const updateText = (id: string, newProps: Partial<TextElement>, shouldPushHistory = true) => {
     if (!ticket) return;
     const newTexts = ticket.texts.map((t) => (t.id === id ? { ...t, ...newProps } : t));
     updateTicket({ texts: newTexts });
+    
+    // Only push to history if requested (skip for transient updates during editing)
+    if (shouldPushHistory && !isEditingSession) {
+      pushToHistory(newTexts, selectedTextId);
+    }
   };
 
   const deleteText = (id: string) => {
@@ -185,8 +288,22 @@ export default function EditPageClient({ compositionId }: EditPageClientProps) {
     }
     if (editingTextId === id) {
       setEditingTextId(null);
+      setIsEditingSession(false);
     }
+    
+    // Push to history after deleting text
+    pushToHistory(newTexts, selectedTextId === id ? null : selectedTextId);
   }
+
+  // Drag operations with history support
+  const handleDragEnd = React.useCallback((draggedTextId: string, initialPosition: { x: number; y: number }, finalPosition: { x: number; y: number }) => {
+    // Only push to history if position actually changed
+    if (initialPosition.x !== finalPosition.x || initialPosition.y !== finalPosition.y) {
+      if (ticket) {
+        pushToHistory(ticket.texts, selectedTextId);
+      }
+    }
+  }, [ticket, selectedTextId, pushToHistory]);
 
   const selectedText = React.useMemo(() => {
     return ticket?.texts.find((t) => t.id === selectedTextId) || null;
@@ -362,7 +479,15 @@ export default function EditPageClient({ compositionId }: EditPageClientProps) {
         <SidebarInset>
           <div className="h-screen flex flex-col bg-transparent">
             <header className="flex-shrink-0 flex items-center justify-between p-2 border-b bg-card/50 backdrop-blur-sm">
-              <SidebarTrigger />
+              <div className="flex items-center gap-2">
+                <SidebarTrigger />
+                <HistoryControls
+                  canUndo={history.canUndo}
+                  canRedo={history.canRedo}
+                  onUndo={handleHistoryUndo}
+                  onRedo={handleHistoryRedo}
+                />
+              </div>
               <div className="flex items-center gap-2">
                 <Button variant="outline" size="sm" onClick={() => canvasRef.current?.resetView()}>
                   <RefreshCcw className="mr-2 h-4 w-4" />
@@ -396,14 +521,16 @@ export default function EditPageClient({ compositionId }: EditPageClientProps) {
                 setSelectedTextId={setSelectedTextId}
                 editingText={editingText}
                 editingTextId={editingTextId}
-                setEditingTextId={setEditingTextId}
-                onUpdateText={updateText}
+                setEditingTextId={beginEditingSession}
+                onUpdateText={(id, props) => updateText(id, props, false)} // Don't push history for transient updates
                 onDeleteText={deleteText}
                 canvasWidth={ticket.canvasWidth}
                 canvasHeight={ticket.canvasHeight}
                 pendingText={pendingText}
                 onTextAdd={addText}
                 onCompleteAddText={() => setPendingText(null)}
+                onDragEnd={handleDragEnd}
+                onEditingFinish={finishEditingSession}
               />
             </main>
           </div>
