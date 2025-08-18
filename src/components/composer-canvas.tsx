@@ -395,13 +395,11 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
       
       if (!draggingState) return;
       
-      setTexts((prev) =>
-        prev.map((t) =>
-          t.id === draggingState.id
-            ? { ...t, x: x - draggingState.offsetX, y: y - draggingState.offsetY }
-            : t
-        )
-      );
+      // Use onUpdateText for drag operations to ensure proper integration
+      onUpdateText(draggingState.id, {
+        x: x - draggingState.offsetX,
+        y: y - draggingState.offsetY
+      });
     };
 
     const handleMouseUp = React.useCallback(() => {
