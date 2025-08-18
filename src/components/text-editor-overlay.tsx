@@ -13,7 +13,7 @@ export interface TextEditorOverlayProps {
   canvasRect?: DOMRect;
 }
 
-export function TextEditorOverlay({
+export const TextEditorOverlay = React.forwardRef<HTMLDivElement, TextEditorOverlayProps>(({
   editingText,
   scale,
   pan,
@@ -22,7 +22,7 @@ export function TextEditorOverlay({
   onCancel,
   suggestions,
   canvasRect,
-}: TextEditorOverlayProps) {
+}, ref) => {
   // Calculate the transformed position of the text element
   const overlayStyle = useMemo((): React.CSSProperties => {
     if (!canvasRect) {
@@ -57,7 +57,7 @@ export function TextEditorOverlay({
   };
 
   return (
-    <div style={overlayStyle}>
+    <div ref={ref} style={overlayStyle}>
       <CanvasAutocomplete
         value={editingText.text}
         onChange={handleChange}
@@ -68,4 +68,6 @@ export function TextEditorOverlay({
       />
     </div>
   );
-}
+});
+
+TextEditorOverlay.displayName = 'TextEditorOverlay';
