@@ -40,6 +40,7 @@ export interface ComposerCanvasHandle {
 
 const DELETE_ICON_SIZE = 20; // in canvas pixels
 const DELETE_ICON_PADDING = 5; // in canvas pixels
+const RESIZE_HANDLE_SIZE = 10; // in canvas pixels
 
 export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCanvasProps>(
   ({ 
@@ -65,7 +66,9 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
     const hasInitialized = React.useRef(false);
     
     const [draggingState, setDraggingState] = React.useState<{ id: string; offsetX: number; offsetY: number } | null>(null);
+    const [resizingState, setResizingState] = React.useState<{ id: string; startFontSize: number; startY: number } | null>(null);
     const [contextMenu, setContextMenu] = React.useState<{ open: boolean; x: number; y: number, canvasX: number, canvasY: number } | null>(null);
+    const [hoverResizeHandle, setHoverResizeHandle] = React.useState<boolean>(false);
     
     const viewStateRef = React.useRef({
       scale: 1,
@@ -261,6 +264,36 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
                 ctx.strokeStyle = 'hsl(var(--destructive))';
                 ctx.lineWidth = 2 / scale;
                 ctx.stroke();
+
+                // Resize Handle (bottom-right corner)
+                const handleSize = RESIZE_HANDLE_SIZE / scale;
+                const handleX = text.x + width;
+                const handleY = text.y + height;
+
+                // Handle background
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+                ctx.fillRect(handleX, handleY, handleSize, handleSize);
+                
+                // Handle border
+                ctx.strokeStyle = 'hsl(var(--primary))';
+                ctx.lineWidth = 1.5 / scale;
+                ctx.strokeRect(handleX, handleY, handleSize, handleSize);
+                
+                // Handle resize icon (small diagonal lines)
+                ctx.beginPath();
+                ctx.strokeStyle = 'hsl(var(--primary))';
+                ctx.lineWidth = 1 / scale;
+                const iconPadding = handleSize * 0.2;
+                // Bottom line
+                ctx.moveTo(handleX + iconPadding, handleY + handleSize - iconPadding);
+                ctx.lineTo(handleX + handleSize - iconPadding, handleY + handleSize - iconPadding);
+                // Right line
+                ctx.moveTo(handleX + handleSize - iconPadding, handleY + iconPadding);
+                ctx.lineTo(handleX + handleSize - iconPadding, handleY + handleSize - iconPadding);
+                // Diagonal line
+                ctx.moveTo(handleX + handleSize * 0.4, handleY + handleSize - iconPadding);
+                ctx.lineTo(handleX + handleSize - iconPadding, handleY + handleSize * 0.4);
+                ctx.stroke();
             }
         });
 
@@ -393,6 +426,17 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
       return { x: transformedX, y: transformedY, clientX, clientY };
     };
 
+    const hitTestResizeHandle = (x: number, y: number, text: TextElement, layout: { width: number; height: number }): boolean => {
+      const { scale } = viewStateRef.current;
+      const handleSize = RESIZE_HANDLE_SIZE / scale;
+      
+      // Resize handle is at bottom-right corner of text bounding box
+      const handleX = text.x + layout.width;
+      const handleY = text.y + layout.height;
+      
+      return x >= handleX && x <= handleX + handleSize && y >= handleY && y <= handleY + handleSize;
+    };
+
     const handleMouseDown = (e: React.MouseEvent | React.TouchEvent) => {
       if (editingTextId) return;
       if ('button' in e && e.button === 2) {
@@ -403,6 +447,30 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
       const { x, y, clientX, clientY } = getTransformedMousePos(e);
       const ctx = internalCanvasRef.current?.getContext('2d');
       if (!ctx) return;
+      
+      // Check if resize handle was clicked
+      if (selectedTextId) {
+        const selected = texts.find(t => t.id === selectedTextId);
+        if (selected && selected.id !== editingTextId) {
+          // Convert to TextModel for layout computation
+          const selectedModel: TextModel = {
+            ...selected,
+            alignment: (selected as any).alignment || 'left',
+            lineHeight: (selected as any).lineHeight || selected.fontSize * 1.2,
+          };
+          
+          const layout = computeLayout(selectedModel, ctx);
+          
+          if (hitTestResizeHandle(x, y, selected, layout)) {
+            setResizingState({
+              id: selected.id,
+              startFontSize: selected.fontSize,
+              startY: y,
+            });
+            return;
+          }
+        }
+      }
       
       // Check if delete icon was clicked
       if (selectedTextId) {
@@ -473,6 +541,18 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
       e.preventDefault();
       const { x, y, clientX, clientY } = getTransformedMousePos(e);
 
+      // Handle resizing
+      if (resizingState) {
+        const selected = texts.find(t => t.id === resizingState.id);
+        if (selected) {
+          const deltaY = y - resizingState.startY;
+          const newFontSize = Math.max(4, Math.round(resizingState.startFontSize + deltaY));
+          
+          onUpdateText(resizingState.id, { fontSize: newFontSize });
+        }
+        return;
+      }
+
       if (viewStateRef.current.isPanning) {
         const { panStart, pan } = viewStateRef.current;
         const dx = clientX - panStart.x;
@@ -483,15 +563,40 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
         return;
       }
       
-      if (!draggingState) return;
-      
-      setTexts((prev) =>
-        prev.map((t) =>
-          t.id === draggingState.id
-            ? { ...t, x: x - draggingState.offsetX, y: y - draggingState.offsetY }
-            : t
-        )
-      );
+      if (draggingState) {
+        setTexts((prev) =>
+          prev.map((t) =>
+            t.id === draggingState.id
+              ? { ...t, x: x - draggingState.offsetX, y: y - draggingState.offsetY }
+              : t
+          )
+        );
+        return;
+      }
+
+      // Check for resize handle hover
+      const ctx = internalCanvasRef.current?.getContext('2d');
+      if (ctx && selectedTextId) {
+        const selected = texts.find(t => t.id === selectedTextId);
+        if (selected && selected.id !== editingTextId) {
+          const selectedModel: TextModel = {
+            ...selected,
+            alignment: (selected as any).alignment || 'left',
+            lineHeight: (selected as any).lineHeight || selected.fontSize * 1.2,
+          };
+          
+          const layout = computeLayout(selectedModel, ctx);
+          const isHoveringHandle = hitTestResizeHandle(x, y, selected, layout);
+          
+          if (isHoveringHandle !== hoverResizeHandle) {
+            setHoverResizeHandle(isHoveringHandle);
+          }
+        } else if (hoverResizeHandle) {
+          setHoverResizeHandle(false);
+        }
+      } else if (hoverResizeHandle) {
+        setHoverResizeHandle(false);
+      }
     };
 
     const handleMouseUp = React.useCallback(() => {
@@ -501,7 +606,10 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
         if (draggingState) {
           setDraggingState(null);
         }
-    }, [draggingState]);
+        if (resizingState) {
+          setResizingState(null);
+        }
+    }, [draggingState, resizingState]);
 
     const handleDoubleClick = (e: React.MouseEvent) => {
       const { x, y } = getTransformedMousePos(e);
@@ -616,6 +724,8 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
     const getCursorStyle = () => {
       if (pendingText) return 'crosshair';
       if (viewStateRef.current.isPanning || draggingState) return 'grabbing';
+      if (resizingState) return 'nwse-resize';
+      if (hoverResizeHandle) return 'nwse-resize';
       // Add cursor change for delete icon hover
       return 'default';
     }
