@@ -20,7 +20,6 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { AutocompleteInput } from '@/components/ui/autocomplete-input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Plus, Trash2, X, UserPlus, BookUser, Check, RefreshCcw, BrainCircuit } from 'lucide-react';
@@ -105,11 +104,10 @@ export function ComposerControls({
           {activeTicket && (
             <div className="space-y-2">
               <Label htmlFor="ticket-name">Name</Label>
-              <AutocompleteInput
+              <Input
                 id="ticket-name"
-                storageKey="ticket-name"
-                defaultValue={activeTicket.name}
-                onSubmit={(name) => onUpdateActiveTicket({ name })}
+                value={activeTicket.name}
+                onChange={(e) => onUpdateActiveTicket({ name: e.target.value })}
                 className="w-full bg-background/50"
               />
             </div>
@@ -202,12 +200,11 @@ export function ComposerControls({
               <div className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="new-contact-name">Name</Label>
-                  <AutocompleteInput
+                  <Input
                     id="new-contact-name"
-                    storageKey="contact-name"
                     placeholder="John Doe"
-                    defaultValue={newContactName}
-                    onSubmit={(value) => setNewContactName(value)}
+                    value={newContactName}
+                    onChange={(e) => setNewContactName(e.target.value)}
                   />
                 </div>
                 <div className="space-y-2">
@@ -289,3 +286,5 @@ export function ComposerControls({
     </Accordion>
   );
 }
+
+    

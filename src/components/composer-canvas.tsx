@@ -3,7 +3,7 @@
 
 import * as React from 'react';
 import type { TextElement } from '@/lib/types';
-import CanvasAutocomplete from './ui/canvas-autocomplete';
+import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 import {
   DropdownMenu,
@@ -56,7 +56,6 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
     pendingText,
     onTextAdd,
     onCompleteAddText,
-    autocompleteSuggestions,
    }, ref) => {
     const internalCanvasRef = React.useRef<HTMLCanvasElement>(null);
     const containerRef = React.useRef<HTMLDivElement>(null);
@@ -580,7 +579,8 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
           style={{ cursor: getCursorStyle() }}
         />
         {editingTextId && editingText && (
-          <CanvasAutocomplete
+          <Textarea
+            ref={textareaRef}
             value={editingText.text}
             onChange={(e) => onUpdateText(editingTextId, { text: e.target.value })}
             onKeyDown={(e) => {
@@ -599,8 +599,6 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
               'absolute resize-none overflow-hidden p-0 m-0 border-ring focus:border-ring focus:ring-0',
               'bg-transparent'
             )}
-            suggestions={autocompleteSuggestions || []}
-            ref={textareaRef}
           />
         )}
       </div>

@@ -320,11 +320,6 @@ export default function EditPageClient({ compositionId }: EditPageClientProps) {
     window.open(`/edit/${newTicket.id}`, '_blank');
   };
   
-  const contactsSuggestions = React.useMemo(() => {
-    return contacts.map(c => c.name);
-  }, [contacts]);
-
-
   if (!ticket) {
     return (
       <div className="h-screen w-screen flex items-center justify-center">
@@ -409,7 +404,6 @@ export default function EditPageClient({ compositionId }: EditPageClientProps) {
                 pendingText={pendingText}
                 onTextAdd={addText}
                 onCompleteAddText={() => setPendingText(null)}
-                autocompleteSuggestions={contactsSuggestions}
               />
             </main>
           </div>
@@ -418,3 +412,5 @@ export default function EditPageClient({ compositionId }: EditPageClientProps) {
     </>
   );
 }
+
+    
