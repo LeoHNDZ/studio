@@ -2,6 +2,7 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
 import { Input } from "./input";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "./dropdown-menu";
 
 type HistoryItem = { text: string; count: number; lastUsed: number };
 
@@ -195,51 +196,49 @@ export const AutocompleteInput = React.forwardRef<HTMLInputElement, Autocomplete
 
     return (
       <div ref={wrapRef} className={cn("relative", className)}>
-        <Input
-          {...props}
-          id={id}
-          ref={ref}
-          placeholder={placeholder}
-          value={value}
-          onChange={handleChange}
-          onKeyDown={handleKeyDown}
-          onFocus={handleFocus}
-          onBlur={handleBlur}
-          role="combobox"
-          aria-autocomplete="list"
-          aria-expanded={open}
-          aria-controls={listboxId}
-          aria-activedescendant={open && highlight >= 0 ? `${listboxId}-opt-${highlight}` : undefined}
-          autoComplete="off"
-          spellCheck={false}
-        />
-        {open && suggestions.length > 0 && (
-          <ul
-            id={listboxId}
-            role="listbox"
-            className="ac-popover"
-          >
-            {suggestions.map((s, i) => {
-              const isActive = i === highlight;
-              return (
-                <li
-                  key={s.text}
-                  id={`${listboxId}-opt-${i}`}
-                  role="option"
-                  aria-selected={isActive}
-                  className={cn("ac-option", isActive && "is-active")}
-                  onMouseEnter={() => setHighlight(i)}
-                  onMouseDown={(e) => { e.preventDefault(); commit(s.text); }}
-                >
-                  <span className="ac-option-text">{s.text}</span>
-                  <span className="ac-meta">
-                    {new Date(s.lastUsed).toLocaleDateString()} • ×{s.count}
-                  </span>
-                </li>
-              );
-            })}
-          </ul>
-        )}
+        <DropdownMenu open={open && suggestions.length > 0} onOpenChange={setOpen}>
+            <DropdownMenuTrigger asChild>
+                <Input
+                  {...props}
+                  id={id}
+                  ref={ref}
+                  placeholder={placeholder}
+                  value={value}
+                  onChange={handleChange}
+                  onKeyDown={handleKeyDown}
+                  onFocus={handleFocus}
+                  onBlur={handleBlur}
+                  role="combobox"
+                  aria-autocomplete="list"
+                  aria-expanded={open}
+                  aria-controls={listboxId}
+                  aria-activedescendant={open && highlight >= 0 ? `${listboxId}-opt-${highlight}` : undefined}
+                  autoComplete="off"
+                  spellCheck={false}
+                />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="w-[--radix-dropdown-menu-trigger-width]">
+                {suggestions.map((s, i) => {
+                  const isActive = i === highlight;
+                  return (
+                    <DropdownMenuItem
+                      key={s.text}
+                      id={`${listboxId}-opt-${i}`}
+                      aria-selected={isActive}
+                      data-active={isActive}
+                      className={cn(isActive && "bg-accent")}
+                      onMouseEnter={() => setHighlight(i)}
+                      onSelect={() => commit(s.text)}
+                    >
+                      <span className="flex-grow">{s.text}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {new Date(s.lastUsed).toLocaleDateString()} • ×{s.count}
+                      </span>
+                    </DropdownMenuItem>
+                  );
+                })}
+            </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     );
 });
