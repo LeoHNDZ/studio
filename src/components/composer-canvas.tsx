@@ -65,6 +65,13 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
       isPanning: false,
       panStart: { x: 0, y: 0 },
     });
+
+    const handleEditingFinish = React.useCallback(() => {
+      if (editingTextId && editingText?.text.trim() === '') {
+        onDeleteText(editingTextId);
+      }
+      setEditingTextId(null);
+    }, [editingTextId, editingText, onDeleteText, setEditingTextId]);
     
     const redrawCanvas = React.useCallback(() => {
         const canvas = internalCanvasRef.current;
@@ -410,13 +417,6 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
         setSelectedTextId(hit);
       }
     };
-
-    const handleEditingFinish = () => {
-      if (editingTextId && editingText?.text.trim() === '') {
-        onDeleteText(editingTextId);
-      }
-      setEditingTextId(null);
-    };
     
     React.useEffect(() => {
       if (editingTextId && textareaRef.current) {
@@ -424,6 +424,19 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
         textareaRef.current.select();
       }
     }, [editingTextId]);
+
+    React.useEffect(() => {
+      const handleOutsideClick = (event: MouseEvent) => {
+        if (editingTextId && textareaRef.current && !textareaRef.current.contains(event.target as Node)) {
+          handleEditingFinish();
+        }
+      };
+
+      document.addEventListener('mousedown', handleOutsideClick);
+      return () => {
+        document.removeEventListener('mousedown', handleOutsideClick);
+      };
+    }, [editingTextId, handleEditingFinish]);
 
 
     const handleWheel = React.useCallback((e: WheelEvent) => {
@@ -563,3 +576,6 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
   }
 );
 ComposerCanvas.displayName = 'ComposerCanvas';
+
+
+    
