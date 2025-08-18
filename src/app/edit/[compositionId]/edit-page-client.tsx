@@ -3,6 +3,7 @@
 
 import * as React from 'react';
 import type { TextElement, Contact, Ticket } from '@/lib/types';
+import { useTextStore } from '@/hooks/use-text-store';
 import {
   Sidebar,
   SidebarContent,
@@ -30,14 +31,19 @@ export default function EditPageClient({ compositionId }: EditPageClientProps) {
 
   const [ticket, setTicket] = React.useState<Ticket | null>(null);
   const [backgroundImage, setBackgroundImage] = React.useState<HTMLImageElement | null>(null);
-  
-  const [selectedTextId, setSelectedTextId] = React.useState<string | null>(null);
-  const [editingTextId, setEditingTextId] = React.useState<string | null>(null);
   const [contacts, setContacts] = React.useState<Contact[]>([]);
   const canvasRef = React.useRef<ComposerCanvasHandle>(null);
   const { toast } = useToast();
   
   const [pendingText, setPendingText] = React.useState<string | null>(null);
+
+  // Text store for centralized text operations
+  const textStore = useTextStore({
+    texts: ticket?.texts || [],
+    onUpdateTexts: (newTexts: TextElement[]) => {
+      updateTicket({ texts: newTexts });
+    },
+  });
 
   React.useEffect(() => {
     if (!ticketId) return;
@@ -147,9 +153,7 @@ export default function EditPageClient({ compositionId }: EditPageClientProps) {
     const canvas = canvasRef.current?.getCanvas();
     if (!canvas) return;
     
-    const newText: TextElement = {
-      id: nanoid(),
-      text,
+    const defaultOptions = {
       x: options?.x ?? canvas.width / 4,
       y: options?.y ?? canvas.height / 4,
       fontSize: 47,
@@ -158,43 +162,27 @@ export default function EditPageClient({ compositionId }: EditPageClientProps) {
       ...options,
     };
     
-    const newTexts = [...ticket.texts, newText];
-    updateTicket({ texts: newTexts });
-    setSelectedTextId(newText.id);
+    const newId = textStore.addText(text, defaultOptions);
+    textStore.selectText(newId);
   };
   
   const startPlacingText = (text: string) => {
     setPendingText(text);
-    setSelectedTextId(null);
+    textStore.selectText(null);
   };
 
-
+  // Backward compatibility wrappers for existing composer-controls interface
   const updateText = (id: string, newProps: Partial<TextElement>) => {
-    if (!ticket) return;
-    const newTexts = ticket.texts.map((t) => (t.id === id ? { ...t, ...newProps } : t));
-    updateTicket({ texts: newTexts });
+    textStore.updateText(id, newProps);
   };
 
   const deleteText = (id: string) => {
-    if (!ticket) return;
-    const newTexts = ticket.texts.filter((t) => t.id !== id);
-    updateTicket({ texts: newTexts });
+    textStore.deleteText(id);
+  };
 
-    if (selectedTextId === id) {
-      setSelectedTextId(null);
-    }
-    if (editingTextId === id) {
-      setEditingTextId(null);
-    }
-  }
-
-  const selectedText = React.useMemo(() => {
-    return ticket?.texts.find((t) => t.id === selectedTextId) || null;
-  }, [ticket, selectedTextId]);
-
-  const editingText = React.useMemo(() => {
-    return ticket?.texts.find((t) => t.id === editingTextId) || null;
-  }, [ticket, editingTextId]);
+  // Use text store state instead of local state
+  const selectedText = textStore.selectedText;
+  const editingText = textStore.editingText;
 
   const handleExport = () => {
     const canvas = canvasRef.current?.getCanvas();
@@ -207,9 +195,9 @@ export default function EditPageClient({ compositionId }: EditPageClientProps) {
       return;
     }
     
-    const currentSelectedId = selectedTextId;
-    setSelectedTextId(null);
-    setEditingTextId(null);
+    const currentSelectedId = textStore.selectedId;
+    textStore.selectText(null);
+    textStore.finishEditing();
 
     setTimeout(() => {
       const dataUrl = canvas.toDataURL('image/png');
@@ -218,20 +206,20 @@ export default function EditPageClient({ compositionId }: EditPageClientProps) {
       link.href = dataUrl;
       link.click();
       
-      setSelectedTextId(currentSelectedId);
+      textStore.selectText(currentSelectedId);
     }, 100); 
   };
   
   const handlePrint = (withBackground = false) => {
-    const wasSelected = selectedTextId;
-    setSelectedTextId(null);
-    setEditingTextId(null);
+    const wasSelected = textStore.selectedId;
+    textStore.selectText(null);
+    textStore.finishEditing();
 
     setTimeout(() => {
         const canvas = canvasRef.current?.getCanvas(withBackground);
         if (!canvas) {
             toast({ title: 'Error', description: 'Could not generate print image.', variant: 'destructive' });
-            if (wasSelected) setSelectedTextId(wasSelected);
+            if (wasSelected) textStore.selectText(wasSelected);
             return;
         }
 
@@ -249,7 +237,7 @@ export default function EditPageClient({ compositionId }: EditPageClientProps) {
                 document.body.removeChild(iframe);
             }
             toast({ title: 'Error', description: 'Could not print.', variant: 'destructive' });
-            if(wasSelected) setSelectedTextId(wasSelected);
+            if(wasSelected) textStore.selectText(wasSelected);
             return;
         }
 
@@ -277,7 +265,7 @@ export default function EditPageClient({ compositionId }: EditPageClientProps) {
             
             // Cleanup
             if (wasSelected) {
-                setSelectedTextId(wasSelected);
+                textStore.selectText(wasSelected);
             }
              if (document.body.contains(iframe)) {
                 document.body.removeChild(iframe);
@@ -391,12 +379,12 @@ export default function EditPageClient({ compositionId }: EditPageClientProps) {
                 ref={canvasRef}
                 backgroundImage={backgroundImage}
                 texts={ticket.texts}
-                setTexts={(newTexts) => setTexts(newTexts)}
-                selectedTextId={selectedTextId}
-                setSelectedTextId={setSelectedTextId}
+                setTexts={(newTexts) => updateTicket({ texts: typeof newTexts === 'function' ? newTexts(ticket.texts) : newTexts })}
+                selectedTextId={textStore.selectedId}
+                setSelectedTextId={textStore.selectText}
                 editingText={editingText}
-                editingTextId={editingTextId}
-                setEditingTextId={setEditingTextId}
+                editingTextId={textStore.editingId}
+                setEditingTextId={(id) => id ? textStore.startEditing(id) : textStore.finishEditing()}
                 onUpdateText={updateText}
                 onDeleteText={deleteText}
                 canvasWidth={ticket.canvasWidth}

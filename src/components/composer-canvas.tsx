@@ -3,7 +3,10 @@
 
 import * as React from 'react';
 import type { TextElement } from '@/lib/types';
-import { Textarea } from '@/components/ui/textarea';
+import type { TextModel } from '@/types/text';
+import { computeLayout } from '@/lib/text-layout';
+import { TextEditorOverlay } from '@/components/text-editor-overlay';
+import type { AutocompleteSuggestion } from '@/components/ui/canvas-autocomplete';
 import { cn } from '@/lib/utils';
 import {
   DropdownMenu,
@@ -59,7 +62,6 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
     const internalCanvasRef = React.useRef<HTMLCanvasElement>(null);
     const containerRef = React.useRef<HTMLDivElement>(null);
     const hasInitialized = React.useRef(false);
-    const textareaRef = React.useRef<HTMLTextAreaElement>(null);
     
     const [draggingState, setDraggingState] = React.useState<{ id: string; offsetX: number; offsetY: number } | null>(null);
     const [contextMenu, setContextMenu] = React.useState<{ open: boolean; x: number; y: number, canvasX: number, canvasY: number } | null>(null);
@@ -77,6 +79,65 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
       }
       setEditingTextId(null);
     }, [editingTextId, editingText, onDeleteText, setEditingTextId]);
+
+    // Generate autocomplete suggestions from existing text tokens
+    const suggestions = React.useMemo((): AutocompleteSuggestion[] => {
+      const words = new Set<string>();
+      
+      texts.forEach(text => {
+        const tokens = text.text
+          .split(/\s+/)
+          .map(token => token.trim())
+          .filter(token => token.length >= 3);
+        
+        tokens.forEach(token => words.add(token));
+      });
+
+      return Array.from(words)
+        .filter(word => word.length >= 3)
+        .map(word => ({ value: word }))
+        .sort((a, b) => a.value.localeCompare(b.value));
+    }, [texts]);
+
+    // Get canvas rect for overlay positioning
+    const [canvasRect, setCanvasRect] = React.useState<DOMRect | undefined>();
+
+    React.useEffect(() => {
+      const updateCanvasRect = () => {
+        if (internalCanvasRef.current) {
+          setCanvasRect(internalCanvasRef.current.getBoundingClientRect());
+        }
+      };
+
+      updateCanvasRect();
+      
+      // Update on resize or scroll
+      const handleResize = () => updateCanvasRect();
+      window.addEventListener('resize', handleResize);
+      window.addEventListener('scroll', handleResize);
+      
+      return () => {
+        window.removeEventListener('resize', handleResize);
+        window.removeEventListener('scroll', handleResize);
+      };
+    }, []);
+
+    // Update canvas rect when view state changes
+    React.useEffect(() => {
+      if (internalCanvasRef.current) {
+        setCanvasRect(internalCanvasRef.current.getBoundingClientRect());
+      }
+    }, [viewStateRef.current.scale, viewStateRef.current.pan]);
+    
+    const handleEditingChange = React.useCallback((newValue: string) => {
+      if (editingTextId) {
+        onUpdateText(editingTextId, { text: newValue });
+      }
+    }, [editingTextId, onUpdateText]);
+
+    const handleEditingCancel = React.useCallback(() => {
+      setEditingTextId(null);
+    }, []);
     
     const redrawCanvas = React.useCallback(() => {
         const canvas = internalCanvasRef.current;
@@ -120,7 +181,17 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
             ctx.drawImage(backgroundImage, x, y, drawWidth, drawHeight);
         }
         
-        texts.forEach((text) => {
+        // Convert texts to TextModels for layout computation
+        const textModels: TextModel[] = texts.map(text => ({
+          ...text,
+          alignment: (text as any).alignment || 'left',
+          lineHeight: (text as any).lineHeight || text.fontSize * 1.2,
+        }));
+
+        textModels.forEach((text) => {
+            // Compute layout with caching
+            const layout = computeLayout(text, ctx);
+            
             ctx.font = `${text.fontSize}px ${text.fontFamily}`;
             if (text.id === editingTextId) {
                 ctx.globalAlpha = 0.2;
@@ -130,13 +201,19 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
             ctx.fillStyle = text.color;
             ctx.textAlign = 'left';
             ctx.textBaseline = 'top';
-            ctx.fillText(text.text, text.x, text.y);
+            
+            // Render each line for multiline support
+            layout.lines.forEach((line, lineIndex) => {
+                const lineY = text.y + (lineIndex * layout.lineHeight);
+                ctx.fillText(line, text.x, lineY);
+            });
+            
             ctx.globalAlpha = 1;
 
             if (text.id === selectedTextId && text.id !== editingTextId) {
-                const metrics = ctx.measureText(text.text);
-                const width = metrics.width;
-                const height = text.fontSize;
+                // Use layout dimensions for selection box
+                const width = layout.width;
+                const height = layout.height;
 
                 // Bounding box
                 ctx.strokeStyle = 'hsl(var(--ring))';
@@ -317,9 +394,15 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
       if (selectedTextId) {
         const selected = texts.find(t => t.id === selectedTextId);
         if (selected) {
-          ctx.font = `${selected.fontSize}px ${selected.fontFamily}`;
-          const metrics = ctx.measureText(selected.text);
-          const width = metrics.width;
+          // Convert to TextModel for layout computation
+          const selectedModel: TextModel = {
+            ...selected,
+            alignment: (selected as any).alignment || 'left',
+            lineHeight: (selected as any).lineHeight || selected.fontSize * 1.2,
+          };
+          
+          const layout = computeLayout(selectedModel, ctx);
+          const width = layout.width;
           const { scale } = viewStateRef.current;
           
           const iconSize = DELETE_ICON_SIZE / scale;
@@ -343,10 +426,17 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
       let hit = false;
       for (let i = texts.length - 1; i >= 0; i--) {
         const text = texts[i];
-        ctx.font = `${text.fontSize}px ${text.fontFamily}`;
-        const metrics = ctx.measureText(text.text);
-        const width = metrics.width;
-        const height = text.fontSize;
+        // Convert to TextModel for layout computation
+        const textModel: TextModel = {
+          ...text,
+          alignment: (text as any).alignment || 'left',
+          lineHeight: (text as any).lineHeight || text.fontSize * 1.2,
+        };
+        
+        const layout = computeLayout(textModel, ctx);
+        const width = layout.width;
+        const height = layout.height;
+        
         if (x >= text.x && x <= text.x + width && y >= text.y && y <= text.y + height) {
           setSelectedTextId(text.id);
           setDraggingState({
@@ -407,10 +497,17 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
       let hit = null;
       for (let i = texts.length - 1; i >= 0; i--) {
         const text = texts[i];
-        ctx.font = `${text.fontSize}px ${text.fontFamily}`;
-        const metrics = ctx.measureText(text.text);
-        const width = metrics.width;
-        const height = text.fontSize;
+        // Convert to TextModel for layout computation
+        const textModel: TextModel = {
+          ...text,
+          alignment: (text as any).alignment || 'left',
+          lineHeight: (text as any).lineHeight || text.fontSize * 1.2,
+        };
+        
+        const layout = computeLayout(textModel, ctx);
+        const width = layout.width;
+        const height = layout.height;
+        
         if (x >= text.x && x <= text.x + width && y >= text.y && y <= text.y + height) {
           hit = text.id;
           break;
@@ -422,26 +519,6 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
         setSelectedTextId(hit);
       }
     };
-    
-    React.useEffect(() => {
-      if (editingTextId && textareaRef.current) {
-        textareaRef.current.focus();
-        textareaRef.current.select();
-      }
-    }, [editingTextId]);
-
-    React.useEffect(() => {
-      const handleOutsideClick = (event: MouseEvent) => {
-        if (editingTextId && textareaRef.current && !textareaRef.current.contains(event.target as Node)) {
-          handleEditingFinish();
-        }
-      };
-
-      document.addEventListener('mousedown', handleOutsideClick);
-      return () => {
-        document.removeEventListener('mousedown', handleOutsideClick);
-      };
-    }, [editingTextId, handleEditingFinish]);
 
 
     const handleWheel = React.useCallback((e: WheelEvent) => {
@@ -509,34 +586,6 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
       // Add cursor change for delete icon hover
       return 'default';
     }
-
-    const calculateTextareaStyle = (): React.CSSProperties => {
-      if (!editingText) return { display: 'none' };
-      
-      const { scale, pan } = viewStateRef.current;
-      const canvas = internalCanvasRef.current;
-      if(!canvas) return { display: 'none' };
-
-      const tempCtx = document.createElement('canvas').getContext('2d');
-      if(!tempCtx) return { display: 'none' };
-      
-      tempCtx.font = `${editingText.fontSize}px ${editingText.fontFamily}`;
-      const metrics = tempCtx.measureText(editingText.text);
-      const textWidth = metrics.width;
-      
-      return {
-        position: 'absolute',
-        top: `${pan.y + (editingText.y * scale)}px`,
-        left: `${pan.x + (editingText.x * scale)}px`,
-        width: `${(textWidth * scale) + 20}px`,
-        height: `${editingText.fontSize * scale * 1.5}px`,
-        font: `${editingText.fontSize * scale}px ${editingText.fontFamily}`,
-        color: editingText.color,
-        transformOrigin: 'top left',
-        zIndex: 100,
-        background: 'transparent',
-      };
-    };
     
     const onContextMenuSelect = (option: 'text' | 'date') => {
       if (!contextMenu) return;
@@ -578,26 +627,19 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
           style={{ cursor: getCursorStyle() }}
         />
         {editingTextId && editingText && (
-          <Textarea
-            ref={textareaRef}
-            value={editingText.text}
-            onChange={(e) => onUpdateText(editingTextId, { text: e.target.value })}
-            onKeyDown={(e) => {
-              if(e.key === 'Escape') {
-                e.preventDefault();
-                handleEditingFinish();
-                internalCanvasRef.current?.focus();
-              }
-              if(e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                handleEditingFinish();
-              }
+          <TextEditorOverlay
+            editingText={{
+              ...editingText,
+              alignment: (editingText as any).alignment || 'left',
+              lineHeight: (editingText as any).lineHeight || editingText.fontSize * 1.2,
             }}
-            style={calculateTextareaStyle()}
-            className={cn(
-              'absolute resize-none overflow-hidden p-0 m-0 border-ring focus:border-ring focus:ring-0',
-              'bg-transparent'
-            )}
+            scale={viewStateRef.current.scale}
+            pan={viewStateRef.current.pan}
+            onChange={handleEditingChange}
+            onCommit={handleEditingFinish}
+            onCancel={handleEditingCancel}
+            suggestions={suggestions}
+            canvasRect={canvasRect}
           />
         )}
       </div>
