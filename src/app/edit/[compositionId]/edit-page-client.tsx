@@ -4,6 +4,7 @@
 import * as React from 'react';
 import type { TextElement, Contact, Ticket } from '@/lib/types';
 import { useTextStore } from '@/hooks/use-text-store';
+import { useHistory } from '@/hooks/use-history';
 import {
   Sidebar,
   SidebarContent,
@@ -37,12 +38,15 @@ export default function EditPageClient({ compositionId }: EditPageClientProps) {
   
   const [pendingText, setPendingText] = React.useState<string | null>(null);
 
-  // Text store for centralized text operations
+  const history = useHistory<{ texts: TextElement[]; selectedId: string | null }>(100);
+
   const textStore = useTextStore({
     texts: ticket?.texts || [],
     onUpdateTexts: (newTexts: TextElement[]) => {
       updateTicket({ texts: newTexts });
     },
+    history,
+    autoSnapshot: true,
   });
 
   React.useEffect(() => {
@@ -108,6 +112,24 @@ export default function EditPageClient({ compositionId }: EditPageClientProps) {
       console.error("Failed to load contacts from localStorage", error);
     }
   }, []);
+
+  React.useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z') {
+        e.preventDefault();
+        if (e.shiftKey) {
+          textStore.redo();
+        } else {
+          textStore.undo();
+        }
+      } else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'y') {
+        e.preventDefault();
+        textStore.redo();
+      }
+    }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [textStore]);
 
   const updateTicket = (updates: Partial<Ticket>) => {
     if (!ticket) return;
