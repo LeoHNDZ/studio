@@ -1,16 +1,20 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import type { TextElement } from '@/lib/types';
 import type { TextModel } from '@/types/text';
 import { invalidateLayout } from '@/lib/text-layout';
+import { makeSnapshot } from '@/lib/serialize-texts';
+import type { HistoryController } from './use-history';
 
 export interface TextStoreOperations {
   addText: (text: string, options?: Partial<Omit<TextElement, 'id' | 'text'>>) => string;
-  updateText: (id: string, newProps: Partial<TextElement>) => void;
+  updateText: (id: string, newProps: Partial<TextElement>, opts?: { skipHistory?: boolean }) => void;
   deleteText: (id: string) => void;
   selectText: (id: string | null) => void;
   startEditing: (id: string) => void;
   finishEditing: () => void;
   cancelEditing: () => void;
+  undo: () => void;
+  redo: () => void;
 }
 
 export interface TextStoreState {
@@ -18,16 +22,29 @@ export interface TextStoreState {
   editingId: string | null;
   selectedText: TextModel | null;
   editingText: TextModel | null;
+  canUndo: boolean;
+  canRedo: boolean;
 }
 
 export interface UseTextStoreOptions {
   texts: TextElement[];
   onUpdateTexts: (texts: TextElement[]) => void;
+  history?: HistoryController<{ texts: TextElement[]; selectedId: string | null; }>;
+  autoSnapshot?: boolean; // default true
 }
 
-export function useTextStore({ texts, onUpdateTexts }: UseTextStoreOptions) {
+export function useTextStore({ texts, onUpdateTexts, history, autoSnapshot = true }: UseTextStoreOptions) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [initialized, setInitialized] = useState(false);
+
+  // Push initial snapshot once (after first non-empty mount OR immediately if already have texts)
+  useEffect(() => {
+    if (!history || !autoSnapshot || initialized) return;
+    history.push(makeSnapshot(texts, selectedId), 'init');
+    setInitialized(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [history, autoSnapshot, initialized]);
 
   // Convert TextElement[] to TextModel[] (add optional fields)
   const textModels = useMemo((): TextModel[] => {
@@ -63,15 +80,18 @@ export function useTextStore({ texts, onUpdateTexts }: UseTextStoreOptions) {
     
     const newTexts = [...texts, newText];
     onUpdateTexts(newTexts);
+    if (autoSnapshot && history) {
+      history.push(makeSnapshot(newTexts, newText.id), 'add');
+    }
+    setSelectedId(newText.id);
     return newText.id;
-  }, [texts, onUpdateTexts]);
+  }, [texts, onUpdateTexts, history, autoSnapshot]);
 
-  const updateText = useCallback((id: string, newProps: Partial<TextElement>) => {
+  const updateText = useCallback((id: string, newProps: Partial<TextElement>, opts?: { skipHistory?: boolean }) => {
     const newTexts = texts.map(t => {
       if (t.id === id) {
         const updated = { ...t, ...newProps };
-        // Strip private fields before updating ticket
-        const { _layout, _layoutVersion, ...cleanProps } = updated as any;
+        const { _layout, _layoutVersion, ...cleanProps } = updated as any; // strip transient
         return cleanProps;
       }
       return t;
@@ -84,7 +104,11 @@ export function useTextStore({ texts, onUpdateTexts }: UseTextStoreOptions) {
     }
     
     onUpdateTexts(newTexts);
-  }, [texts, textModels, onUpdateTexts]);
+
+    if (autoSnapshot && history && !opts?.skipHistory) {
+      history.push(makeSnapshot(newTexts, selectedId), 'update');
+    }
+  }, [texts, textModels, onUpdateTexts, history, autoSnapshot, selectedId]);
 
   const deleteText = useCallback((id: string) => {
     const newTexts = texts.filter(t => t.id !== id);
@@ -97,7 +121,10 @@ export function useTextStore({ texts, onUpdateTexts }: UseTextStoreOptions) {
     if (editingId === id) {
       setEditingId(null);
     }
-  }, [texts, selectedId, editingId, onUpdateTexts]);
+    if (autoSnapshot && history) {
+      history.push(makeSnapshot(newTexts, null), 'delete');
+    }
+  }, [texts, selectedId, editingId, onUpdateTexts, history, autoSnapshot]);
 
   const selectText = useCallback((id: string | null) => {
     setSelectedId(id);
@@ -112,13 +139,33 @@ export function useTextStore({ texts, onUpdateTexts }: UseTextStoreOptions) {
     // Delete text if it's empty
     if (editingId && editingText?.text.trim() === '') {
       deleteText(editingId);
+    } else if (editingId && autoSnapshot && history) {
+      history.push(makeSnapshot(texts, editingId), 'finish-edit');
     }
     setEditingId(null);
-  }, [editingId, editingText, deleteText]);
+  }, [editingId, editingText, deleteText, history, autoSnapshot, texts]);
 
   const cancelEditing = useCallback(() => {
     setEditingId(null);
   }, []);
+
+  const undo = useCallback(() => {
+    if (!history) return;
+    const prev = history.undo();
+    if (!prev) return;
+    onUpdateTexts(prev.texts);
+    setSelectedId(prev.selectedId);
+    setEditingId(null);
+  }, [history, onUpdateTexts]);
+
+  const redo = useCallback(() => {
+    if (!history) return;
+    const next = history.redo();
+    if (!next) return;
+    onUpdateTexts(next.texts);
+    setSelectedId(next.selectedId);
+    setEditingId(null);
+  }, [history, onUpdateTexts]);
 
   const operations: TextStoreOperations = {
     addText,
@@ -128,6 +175,8 @@ export function useTextStore({ texts, onUpdateTexts }: UseTextStoreOptions) {
     startEditing,
     finishEditing,
     cancelEditing,
+    undo,
+    redo,
   };
 
   const state: TextStoreState = {
@@ -135,6 +184,8 @@ export function useTextStore({ texts, onUpdateTexts }: UseTextStoreOptions) {
     editingId,
     selectedText,
     editingText,
+    canUndo: !!history?.canUndo(),
+    canRedo: !!history?.canRedo(),
   };
 
   return {

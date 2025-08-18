@@ -4,6 +4,7 @@
 import * as React from 'react';
 import type { TextElement, Contact, Ticket } from '@/lib/types';
 import { useTextStore } from '@/hooks/use-text-store';
+import { useHistory } from '@/hooks/use-history';
 import {
   Sidebar,
   SidebarContent,
@@ -21,33 +22,34 @@ import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
-interface EditPageClientProps {
-  compositionId: string;
-}
+interface EditPageClientProps { compositionId: string; }
 
 export default function EditPageClient({ compositionId }: EditPageClientProps) {
   const ticketId = compositionId;
   const router = useRouter();
+  const { toast } = useToast();
 
   const [ticket, setTicket] = React.useState<Ticket | null>(null);
   const [backgroundImage, setBackgroundImage] = React.useState<HTMLImageElement | null>(null);
   const [contacts, setContacts] = React.useState<Contact[]>([]);
-  const canvasRef = React.useRef<ComposerCanvasHandle>(null);
-  const { toast } = useToast();
-  
   const [pendingText, setPendingText] = React.useState<string | null>(null);
+  const canvasRef = React.useRef<ComposerCanvasHandle>(null);
 
-  // Text store for centralized text operations
+  const updateTicket = (updates: Partial<Ticket>) => { if (!ticket) return; setTicket(t => t ? { ...t, ...updates } : null); };
+
+  // History for text editing (capacity 100)
+  const history = useHistory<{ texts: TextElement[]; selectedId: string | null }>(100);
+
   const textStore = useTextStore({
     texts: ticket?.texts || [],
-    onUpdateTexts: (newTexts: TextElement[]) => {
-      updateTicket({ texts: newTexts });
-    },
+    onUpdateTexts: (newTexts) => updateTicket({ texts: newTexts }),
+    history,
+    autoSnapshot: true,
   });
 
+  // Load ticket
   React.useEffect(() => {
     if (!ticketId) return;
-
     try {
       const savedTickets = localStorage.getItem('tickets');
       if (savedTickets) {
@@ -56,22 +58,23 @@ export default function EditPageClient({ compositionId }: EditPageClientProps) {
         if (currentTicket) {
           setTicket(currentTicket);
         } else {
-          toast({ title: "Error", description: "Ticket not found.", variant: 'destructive' });
+          toast({ title: 'Error', description: 'Ticket not found.', variant: 'destructive' });
           router.push('/');
         }
       } else {
-         router.push('/');
+        router.push('/');
       }
-    } catch (error) {
-      console.error("Failed to load ticket from localStorage", error);
+    } catch (e) {
+      console.error('Failed to load ticket', e);
       router.push('/');
     }
   }, [ticketId, router, toast]);
 
+  // Load background image
   React.useEffect(() => {
-    if (ticket && ticket.backgroundImageUrl) {
+    if (ticket?.backgroundImageUrl) {
       const img = new Image();
-      img.crossOrigin = "anonymous";
+      img.crossOrigin = 'anonymous';
       img.src = ticket.backgroundImageUrl;
       img.onload = () => setBackgroundImage(img);
     } else {
@@ -79,21 +82,17 @@ export default function EditPageClient({ compositionId }: EditPageClientProps) {
     }
   }, [ticket?.backgroundImageUrl]);
 
-
-  // Effect to save the current ticket to localStorage
+  // Persist ticket changes
   React.useEffect(() => {
-    if (ticket) {
-       try {
-        const savedTickets = localStorage.getItem('tickets');
-        const tickets = savedTickets ? (JSON.parse(savedTickets) as Ticket[]) : [];
-        const updatedTickets = tickets.map(t => t.id === ticket.id ? ticket : t);
-        if (!updatedTickets.some(t => t.id === ticket.id)) {
-            updatedTickets.push(ticket);
-        }
-        localStorage.setItem('tickets', JSON.stringify(updatedTickets));
-      } catch (error) {
-        console.error("Failed to save ticket", error);
-      }
+    if (!ticket) return;
+    try {
+      const savedTickets = localStorage.getItem('tickets');
+      const tickets = savedTickets ? (JSON.parse(savedTickets) as Ticket[]) : [];
+      const updatedTickets = tickets.map(t => t.id === ticket.id ? ticket : t);
+      if (!updatedTickets.some(t => t.id === ticket.id)) updatedTickets.push(ticket);
+      localStorage.setItem('tickets', JSON.stringify(updatedTickets));
+    } catch (e) {
+      console.error('Failed to save ticket', e);
     }
   }, [ticket]);
 
@@ -101,304 +100,182 @@ export default function EditPageClient({ compositionId }: EditPageClientProps) {
   React.useEffect(() => {
     try {
       const savedContacts = localStorage.getItem('contacts');
-      if (savedContacts) {
-        setContacts(JSON.parse(savedContacts));
-      }
-    } catch (error) {
-      console.error("Failed to load contacts from localStorage", error);
+      if (savedContacts) setContacts(JSON.parse(savedContacts));
+    } catch (e) {
+      console.error('Failed to load contacts', e);
     }
   }, []);
 
-  const updateTicket = (updates: Partial<Ticket>) => {
-    if (!ticket) return;
-    setTicket(t => t ? { ...t, ...updates } : null);
-  };
-  
-  const setTexts = (newTexts: TextElement[] | ((prev: TextElement[])=>TextElement[])) => {
-      if(!ticket) return;
-      const updatedTexts = typeof newTexts === 'function' ? newTexts(ticket.texts) : newTexts;
-      updateTicket({ texts: updatedTexts });
-  }
-
-  const saveContacts = (updatedContacts: Contact[]) => {
-    try {
-      localStorage.setItem('contacts', JSON.stringify(updatedContacts));
-      setContacts(updatedContacts);
-    } catch (error) {
-      console.error("Failed to save contacts to localStorage", error);
+  // Keyboard shortcuts for undo/redo
+  React.useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z') {
+        e.preventDefault();
+        if (e.shiftKey) textStore.redo(); else textStore.undo();
+      } else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'y') {
+        e.preventDefault();
+        textStore.redo();
+      }
     }
-  };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [textStore]);
 
-  const addContact = (name: string, details: string) => {
-    const newContact: Contact = { id: nanoid(), name, details };
-    const updatedContacts = [...contacts, newContact];
-    saveContacts(updatedContacts);
+  // Contact helpers
+  const saveContacts = (updated: Contact[]) => {
+    try { localStorage.setItem('contacts', JSON.stringify(updated)); setContacts(updated); } catch (e) { console.error('Failed to save contacts', e); }
   };
+  const addContact = (name: string, details: string) => { const c: Contact = { id: nanoid(), name, details }; saveContacts([...contacts, c]); };
+  const deleteContact = (id: string) => saveContacts(contacts.filter(c => c.id !== id));
 
-  const deleteContact = (id: string) => {
-    const updatedContacts = contacts.filter(c => c.id !== id);
-    saveContacts(updatedContacts);
-  };
-  
-  const clearBackgroundImage = () => {
-    updateTicket({ backgroundImageUrl: null });
-  };
-  
-  const handleRestoreBackground = () => {
-    updateTicket({ backgroundImageUrl: '/Ticket.png' });
-  };
+  // Background helpers
+  const clearBackgroundImage = () => updateTicket({ backgroundImageUrl: null });
+  const handleRestoreBackground = () => updateTicket({ backgroundImageUrl: '/Ticket.png' });
 
+  // Text operations wrappers
   const addText = (text: string, options?: Partial<Omit<TextElement, 'id' | 'text'>>) => {
     if (!ticket) return;
     const canvas = canvasRef.current?.getCanvas();
     if (!canvas) return;
-    
-    const defaultOptions = {
-      x: options?.x ?? canvas.width / 4,
-      y: options?.y ?? canvas.height / 4,
-      fontSize: 47,
-      fontFamily: 'Inter',
-      color: '#000000',
-      ...options,
-    };
-    
+    const defaultOptions = { x: options?.x ?? canvas.width / 4, y: options?.y ?? canvas.height / 4, fontSize: 47, fontFamily: 'Inter', color: '#000000', ...options };
     const newId = textStore.addText(text, defaultOptions);
     textStore.selectText(newId);
   };
-  
-  const startPlacingText = (text: string) => {
-    setPendingText(text);
-    textStore.selectText(null);
-  };
+  const startPlacingText = (text: string) => { setPendingText(text); textStore.selectText(null); };
+  const updateText = (id: string, newProps: Partial<TextElement>) => textStore.updateText(id, newProps);
+  const deleteText = (id: string) => textStore.deleteText(id);
 
-  // Backward compatibility wrappers for existing composer-controls interface
-  const updateText = (id: string, newProps: Partial<TextElement>) => {
-    textStore.updateText(id, newProps);
-  };
-
-  const deleteText = (id: string) => {
-    textStore.deleteText(id);
-  };
-
-  // Use text store state instead of local state
   const selectedText = textStore.selectedText;
   const editingText = textStore.editingText;
 
+  // Export as PNG
   const handleExport = () => {
     const canvas = canvasRef.current?.getCanvas();
-    if (!canvas) {
-      toast({
-        title: 'Error',
-        description: 'Canvas not found.',
-        variant: 'destructive',
-      });
-      return;
-    }
-    
+    if (!canvas) { toast({ title: 'Error', description: 'Canvas not found.', variant: 'destructive' }); return; }
     const currentSelectedId = textStore.selectedId;
-    textStore.selectText(null);
-    textStore.finishEditing();
-
+    textStore.selectText(null); textStore.finishEditing();
     setTimeout(() => {
       const dataUrl = canvas.toDataURL('image/png');
       const link = document.createElement('a');
       link.download = `${ticket?.name || 'ticket'}.png`;
-      link.href = dataUrl;
-      link.click();
-      
+      link.href = dataUrl; link.click();
       textStore.selectText(currentSelectedId);
-    }, 100); 
+    }, 100);
   };
-  
+
+  // Print helper
   const handlePrint = (withBackground = false) => {
     const wasSelected = textStore.selectedId;
-    textStore.selectText(null);
-    textStore.finishEditing();
-
+    textStore.selectText(null); textStore.finishEditing();
     setTimeout(() => {
-        const canvas = canvasRef.current?.getCanvas(withBackground);
-        if (!canvas) {
-            toast({ title: 'Error', description: 'Could not generate print image.', variant: 'destructive' });
-            if (wasSelected) textStore.selectText(wasSelected);
-            return;
-        }
-
-        const dataUrl = canvas.toDataURL('image/png');
-        const iframe = document.createElement('iframe');
-        iframe.style.position = 'fixed';
-        iframe.style.width = '0';
-        iframe.style.height = '0';
-        iframe.style.border = 'none';
-        document.body.appendChild(iframe);
-
-        const doc = iframe.contentWindow?.document;
-        if (!doc) {
-            if (document.body.contains(iframe)) {
-                document.body.removeChild(iframe);
-            }
-            toast({ title: 'Error', description: 'Could not print.', variant: 'destructive' });
-            if(wasSelected) textStore.selectText(wasSelected);
-            return;
-        }
-
-        doc.open();
-        doc.write(`
-            <html>
-                <head>
-                  <title>Print</title>
-                  <style>
-                    @page { margin: 0; }
-                    body { margin: 0; }
-                  </style>
-                </head>
-                <body style="margin: 0; padding: 0;">
-                    <img src="${dataUrl}" onload="window.print()" style="background: transparent; max-width: 100%;"/>
-                </body>
-            </html>
-        `);
-        doc.close();
-
-        let printed = false;
-        const printAndCleanup = () => {
-            if (printed) return;
-            printed = true;
-            
-            // Cleanup
-            if (wasSelected) {
-                textStore.selectText(wasSelected);
-            }
-             if (document.body.contains(iframe)) {
-                document.body.removeChild(iframe);
-            }
-        };
-
-        const handleAfterPrint = () => {
-            printAndCleanup();
-            window.removeEventListener('afterprint', handleAfterPrint);
-        };
-        
-        window.addEventListener('afterprint', handleAfterPrint);
-
-        // Fallback timeout in case afterprint doesn't fire
-        setTimeout(() => {
-            if (!printed) {
-                printAndCleanup();
-            }
-        }, 2000);
-
+      const canvas = canvasRef.current?.getCanvas(withBackground);
+      if (!canvas) { toast({ title: 'Error', description: 'Could not generate print image.', variant: 'destructive' }); if (wasSelected) textStore.selectText(wasSelected); return; }
+      const dataUrl = canvas.toDataURL('image/png');
+      const iframe = document.createElement('iframe');
+      iframe.style.position = 'fixed'; iframe.style.width = '0'; iframe.style.height = '0'; iframe.style.border = 'none';
+      document.body.appendChild(iframe);
+      const doc = iframe.contentWindow?.document;
+      if (!doc) { if (document.body.contains(iframe)) document.body.removeChild(iframe); toast({ title: 'Error', description: 'Could not print.', variant: 'destructive' }); if (wasSelected) textStore.selectText(wasSelected); return; }
+      doc.open();
+      doc.write(`
+        <html>
+          <head>
+            <title>Print</title>
+            <style> @page { margin: 0; } body { margin: 0; } </style>
+          </head>
+          <body style="margin:0;padding:0;">
+            <img src="${dataUrl}" onload="window.print()" style="background:transparent;max-width:100%;"/>
+          </body>
+        </html>
+      `);
+      doc.close();
+      let printed = false;
+      const printAndCleanup = () => { if (printed) return; printed = true; if (wasSelected) textStore.selectText(wasSelected); if (document.body.contains(iframe)) document.body.removeChild(iframe); };
+      const handleAfterPrint = () => { printAndCleanup(); window.removeEventListener('afterprint', handleAfterPrint); };
+      window.addEventListener('afterprint', handleAfterPrint);
+      setTimeout(() => { if (!printed) printAndCleanup(); }, 2000);
     }, 100);
-};
+  };
 
+  // Duplicate ticket
   const handleDuplicate = () => {
     if (!ticket) return;
-
     const savedTickets = localStorage.getItem('tickets');
     const tickets = savedTickets ? (JSON.parse(savedTickets) as Ticket[]) : [];
-
-    const newTicket: Ticket = {
-      ...ticket,
-      id: nanoid(),
-      name: `Copy of ${ticket.name}`,
-      createdAt: Date.now(),
-    };
-
+    const newTicket: Ticket = { ...ticket, id: nanoid(), name: `Copy of ${ticket.name}`, createdAt: Date.now() };
     const updatedTickets = [...tickets, newTicket];
     localStorage.setItem('tickets', JSON.stringify(updatedTickets));
-    
     window.open(`/edit/${newTicket.id}`, '_blank');
   };
-  
+
   if (!ticket) {
-    return (
-      <div className="h-screen w-screen flex items-center justify-center">
-          <p>Loading ticket...</p>
-      </div>
-    );
+    return (<div className="h-screen w-screen flex items-center justify-center"><p>Loading ticket...</p></div>);
   }
 
   return (
-    <>
-      <SidebarProvider>
-        <Sidebar className="border-r bg-sidebar/70 backdrop-blur-sm">
-          <SidebarHeader className="p-4 flex items-center justify-between border-b">
+    <SidebarProvider>
+      <Sidebar className="border-r bg-sidebar/70 backdrop-blur-sm">
+        <SidebarHeader className="p-4 flex items-center justify-between border-b">
+          <div className="flex items-center gap-2">
+            <Link href="/" passHref>
+              <Button variant="ghost" size="icon"><ArrowLeft /></Button>
+            </Link>
+            <h1 className="text-xl font-semibold font-headline">TicketMaker</h1>
+          </div>
+        </SidebarHeader>
+        <SidebarContent className="p-0">
+          <ComposerControls
+            onClearBackground={clearBackgroundImage}
+            onRestoreBackground={handleRestoreBackground}
+            onAddText={startPlacingText}
+            selectedText={selectedText}
+            onUpdateText={updateText}
+            onDeleteText={deleteText}
+            hasBackgroundImage={!!ticket.backgroundImageUrl}
+            contacts={contacts}
+            onAddContact={addContact}
+            onDeleteContact={deleteContact}
+            isAddingText={!!pendingText}
+            onAddContactText={addText}
+            activeTicket={ticket}
+            onUpdateActiveTicket={updateTicket}
+          />
+        </SidebarContent>
+      </Sidebar>
+      <SidebarInset>
+        <div className="h-screen flex flex-col bg-transparent">
+          <header className="flex-shrink-0 flex items-center justify-between p-2 border-b bg-card/50 backdrop-blur-sm">
+            <SidebarTrigger />
             <div className="flex items-center gap-2">
-               <Link href="/" passHref>
-                 <Button variant="ghost" size="icon"><ArrowLeft /></Button>
-               </Link>
-              <h1 className="text-xl font-semibold font-headline">TicketMaker</h1>
+              <Button variant="outline" size="sm" onClick={() => canvasRef.current?.resetView()}><RefreshCcw className="mr-2 h-4 w-4" />Reset View</Button>
+              <Button variant="outline" size="sm" onClick={() => handlePrint(false)}><Printer className="mr-2 h-4 w-4" />Print Text</Button>
+              <Button variant="outline" size="sm" onClick={() => handlePrint(true)} disabled={!backgroundImage}><ImageIcon className="mr-2 h-4 w-4" />Print with BG</Button>
+              <Button variant="outline" size="sm" onClick={handleDuplicate}><Copy className="mr-2 h-4 w-4" />Duplicate</Button>
+              <Button size="sm" onClick={handleExport}><Download className="mr-2 h-4 w-4" />Export PNG</Button>
             </div>
-          </SidebarHeader>
-          <SidebarContent className="p-0">
-            <ComposerControls
-              onClearBackground={clearBackgroundImage}
-              onRestoreBackground={handleRestoreBackground}
-              onAddText={startPlacingText}
-              selectedText={selectedText}
+          </header>
+          <main className="flex-1 p-4 overflow-auto">
+            <ComposerCanvas
+              ref={canvasRef}
+              backgroundImage={backgroundImage}
+              texts={ticket.texts}
+              setTexts={(newTexts) => updateTicket({ texts: typeof newTexts === 'function' ? newTexts(ticket.texts) : newTexts })}
+              selectedTextId={textStore.selectedId}
+              setSelectedTextId={textStore.selectText}
+              editingText={editingText}
+              editingTextId={textStore.editingId}
+              setEditingTextId={(id) => id ? textStore.startEditing(id) : textStore.finishEditing()}
               onUpdateText={updateText}
               onDeleteText={deleteText}
-              hasBackgroundImage={!!ticket.backgroundImageUrl}
-              contacts={contacts}
-              onAddContact={addContact}
-              onDeleteContact={deleteContact}
-              isAddingText={!!pendingText}
-              onAddContactText={addText}
-              activeTicket={ticket}
-              onUpdateActiveTicket={updateTicket}
+              canvasWidth={ticket.canvasWidth}
+              canvasHeight={ticket.canvasHeight}
+              pendingText={pendingText}
+              onTextAdd={addText}
+              onCompleteAddText={() => setPendingText(null)}
             />
-          </SidebarContent>
-        </Sidebar>
-        <SidebarInset>
-          <div className="h-screen flex flex-col bg-transparent">
-            <header className="flex-shrink-0 flex items-center justify-between p-2 border-b bg-card/50 backdrop-blur-sm">
-              <SidebarTrigger />
-              <div className="flex items-center gap-2">
-                <Button variant="outline" size="sm" onClick={() => canvasRef.current?.resetView()}>
-                  <RefreshCcw className="mr-2 h-4 w-4" />
-                  Reset View
-                </Button>
-                <Button variant="outline" size="sm" onClick={() => handlePrint(false)}>
-                  <Printer className="mr-2 h-4 w-4" />
-                  Print Text
-                </Button>
-                <Button variant="outline" size="sm" onClick={() => handlePrint(true)} disabled={!backgroundImage}>
-                  <ImageIcon className="mr-2 h-4 w-4" />
-                  Print with BG
-                </Button>
-                 <Button variant="outline" size="sm" onClick={handleDuplicate}>
-                  <Copy className="mr-2 h-4 w-4" />
-                  Duplicate
-                </Button>
-                <Button size="sm" onClick={handleExport}>
-                  <Download className="mr-2 h-4 w-4" />
-                  Export PNG
-                </Button>
-              </div>
-            </header>
-            <main className="flex-1 p-4 overflow-auto">
-              <ComposerCanvas
-                ref={canvasRef}
-                backgroundImage={backgroundImage}
-                texts={ticket.texts}
-                setTexts={(newTexts) => updateTicket({ texts: typeof newTexts === 'function' ? newTexts(ticket.texts) : newTexts })}
-                selectedTextId={textStore.selectedId}
-                setSelectedTextId={textStore.selectText}
-                editingText={editingText}
-                editingTextId={textStore.editingId}
-                setEditingTextId={(id) => id ? textStore.startEditing(id) : textStore.finishEditing()}
-                onUpdateText={updateText}
-                onDeleteText={deleteText}
-                canvasWidth={ticket.canvasWidth}
-                canvasHeight={ticket.canvasHeight}
-                pendingText={pendingText}
-                onTextAdd={addText}
-                onCompleteAddText={() => setPendingText(null)}
-              />
-            </main>
-          </div>
-        </SidebarInset>
-      </SidebarProvider>
-    </>
+          </main>
+        </div>
+      </SidebarInset>
+    </SidebarProvider>
   );
 }
-
-    
