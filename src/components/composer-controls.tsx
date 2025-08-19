@@ -68,14 +68,14 @@ export function ComposerControls({
   const [isSuggesting, setIsSuggesting] = React.useState(false);
   const { toast } = useToast();
   const textAreaRef = React.useRef<HTMLTextAreaElement>(null);
+  const prevTextIdRef = React.useRef<string | null>(null);
 
-  // Normalization function for single-line text
+  // Normalize to single line
   const normalizeSingleLine = (input: string) => input
     .replace(/[\r\n]+/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
 
-  // Auto-resize textarea to fit content
   const autoResizeTextarea = React.useCallback(() => {
     if (textAreaRef.current) {
       textAreaRef.current.style.height = 'auto';
@@ -83,42 +83,55 @@ export function ComposerControls({
     }
   }, []);
 
-  // Auto-resize when selectedText changes
+  // Selective one-time auto-select (exclude '✔')
   React.useEffect(() => {
-    if (selectedText?.id) {
-      autoResizeTextarea();
-      // Optionally select text on initial focus
-      if (textAreaRef.current) {
-        textAreaRef.current.select();
-      }
+    if (!selectedText || !textAreaRef.current) {
+      prevTextIdRef.current = selectedText?.id ?? null;
+      return;
     }
-  }, [selectedText?.id, selectedText?.text, autoResizeTextarea]);
+    const el = textAreaRef.current;
+    el.style.height = 'auto';
+    el.style.height = el.scrollHeight + 'px';
 
-  // Handle text change with auto-resize
+    const isNewElement =
+      prevTextIdRef.current !== selectedText.id &&
+      selectedText.text === 'New Text';
+
+    if (isNewElement) {
+      el.focus();
+      el.select();
+    } else {
+      el.focus();
+    }
+
+    prevTextIdRef.current = selectedText.id;
+  }, [selectedText?.id, selectedText?.text]);
+
   const handleTextChange = React.useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
     if (selectedText) {
       onUpdateText(selectedText.id, { text: e.target.value });
-      // Auto-resize after state update
       setTimeout(autoResizeTextarea, 0);
     }
   }, [selectedText, onUpdateText, autoResizeTextarea]);
 
-  // Handle paste with normalization
   const handlePaste = React.useCallback((e: React.ClipboardEvent<HTMLTextAreaElement>) => {
-    if (!selectedText) return;
-    
+    if (!selectedText || !textAreaRef.current) return;
     e.preventDefault();
-    const pastedText = e.clipboardData.getData('text/plain');
-    const normalizedText = normalizeSingleLine(pastedText);
-    
-    onUpdateText(selectedText.id, { text: normalizedText });
-    
-    // Update textarea value and trigger resize
-    if (textAreaRef.current) {
-      textAreaRef.current.value = normalizedText;
-      autoResizeTextarea();
-    }
-  }, [selectedText, onUpdateText, autoResizeTextarea, normalizeSingleLine]);
+    const raw = e.clipboardData.getData('text/plain');
+    const insert = normalizeSingleLine(raw);
+    const el = textAreaRef.current;
+    const { selectionStart, selectionEnd, value } = el;
+    const nextValue = value.slice(0, selectionStart) + insert + value.slice(selectionEnd);
+    onUpdateText(selectedText.id, { text: nextValue });
+    requestAnimationFrame(() => {
+      if (!textAreaRef.current) return;
+      const t = textAreaRef.current;
+      t.style.height = 'auto';
+      t.style.height = t.scrollHeight + 'px';
+      const caret = selectionStart + insert.length;
+      t.selectionStart = t.selectionEnd = caret;
+    });
+  }, [selectedText, onUpdateText]);
 
   const handleAddContact = () => {
     if (newContactName.trim() && newContactDetails.trim()) {
