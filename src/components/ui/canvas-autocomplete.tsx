@@ -38,14 +38,13 @@ export function CanvasAutocomplete({
   const [selectedIndex, setSelectedIndex] = useState(-1);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const suggestionRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const hasAutoSelectedRef = useRef(false);
 
-  // Normalization function for single-line text
   const normalizeSingleLine = (input: string) => input
     .replace(/[\r\n]+/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
 
-  // Auto-resize textarea to fit content
   const autoResizeTextarea = React.useCallback(() => {
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
@@ -90,39 +89,44 @@ export function CanvasAutocomplete({
     setSelectedIndex(-1);
   }, [filteredSuggestions]);
 
-  // Focus textarea on mount
+  // One-time auto-select only for 'New Text' (exclude '✔')
   useEffect(() => {
-    if (textareaRef.current) {
-      textareaRef.current.focus();
-      textareaRef.current.select();
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = el.scrollHeight + 'px';
+    const isPlaceholder = value === 'New Text';
+    if (!hasAutoSelectedRef.current && isPlaceholder) {
+      el.focus();
+      el.select();
+      hasAutoSelectedRef.current = true;
+    } else {
+      el.focus();
     }
-  }, []);
+  }, [value]);
 
-  // Auto-resize when value changes
-  useEffect(() => {
-    autoResizeTextarea();
-  }, [value, autoResizeTextarea]);
-
-  // Handle text change with auto-resize
   const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     onChange(e.target.value);
-    // Auto-resize after value change
     setTimeout(autoResizeTextarea, 0);
   };
 
-  // Handle paste with normalization
   const handlePaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
     e.preventDefault();
-    const pastedText = e.clipboardData.getData('text/plain');
-    const normalizedText = normalizeSingleLine(pastedText);
-    
-    onChange(normalizedText);
-    
-    // Update textarea value and trigger resize
-    if (textareaRef.current) {
-      textareaRef.current.value = normalizedText;
-      autoResizeTextarea();
-    }
+    const raw = e.clipboardData.getData('text/plain');
+    const insert = normalizeSingleLine(raw);
+    const el = textareaRef.current;
+    if (!el) return;
+    const { selectionStart, selectionEnd, value: current } = el;
+    const nextValue = current.slice(0, selectionStart) + insert + current.slice(selectionEnd);
+    onChange(nextValue);
+    requestAnimationFrame(() => {
+      if (!textareaRef.current) return;
+      const t = textareaRef.current;
+      t.style.height = 'auto';
+      t.style.height = t.scrollHeight + 'px';
+      const caret = selectionStart + insert.length;
+      t.selectionStart = t.selectionEnd = caret;
+    });
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
