@@ -8,6 +8,8 @@ import { computeLayout } from '@/lib/text-layout';
 import { TextEditorOverlay } from '@/components/text-editor-overlay';
 import type { AutocompleteSuggestion } from '@/components/ui/canvas-autocomplete';
 import { cn } from '@/lib/utils';
+import { getCompositionRepositoryInstance } from '@/data/repository';
+import { extractPhrases } from '@/data/phraseUtils';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -84,150 +86,132 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
       setEditingTextId(null);
     }, [editingTextId, editingText, onDeleteText, setEditingTextId]);
 
-    // Local phrases extractor (n-grams up to length 4)
-    const extractPhrasesFromText = React.useCallback((raw: string) => {
+    // Get composition repository instance
+    const repository = React.useMemo(() => getCompositionRepositoryInstance(), []);
+
+    // Local phrases from current texts (for immediate reuse)
+    const localPhrases = React.useMemo(() => {
       const phrases = new Set<string>();
-      const words = raw
-        .split(/\s+/)
-        .map(w => w.trim())
-        .filter(w => w.length > 0);
-
-      for (let i = 0; i < words.length; i++) {
-        for (let len = 1; len <= Math.min(4, words.length - i); len++) {
-          const ngram = words.slice(i, i + len).join(' ');
-          if (ngram.length >= 2) {
-            phrases.add(ngram);
-          }
+      texts.forEach(text => {
+        if (text.text?.trim()) {
+          const textPhrases = extractPhrases(text.text);
+          textPhrases.forEach(phrase => phrases.add(phrase));
         }
-      }
+      });
       return phrases;
-    }, []);
+    }, [texts]);
 
-    // Cache fetched ticket data and phrases in a ref to avoid re-fetching across renders
-    const ticketPhrasesRef = React.useRef<Set<string> | null>(null);
-    const ticketDataRef = React.useRef<any[] | null>(null);
+    // Repository phrases state
+    const [repositoryPhrases, setRepositoryPhrases] = React.useState<Array<{ value: string; score: number; source: string; originId?: string }>>([]);
 
-    // State to signal ticket fetch status (for future UI / telemetry)
-    const [ticketsLoaded, setTicketsLoaded] = React.useState(false);
+    // Auto-save current composition to repository for future phrase suggestions
+    React.useEffect(() => {
+      if (texts.length === 0) return; // Don't save empty compositions
+      
+      const saveCurrentComposition = async () => {
+        try {
+          // Create a temporary composition for phrase extraction
+          const tempComposition = {
+            name: `Auto-saved ${new Date().toISOString()}`,
+            texts: texts.map(t => ({
+              id: t.id,
+              text: t.text,
+              x: t.x,
+              y: t.y,
+              fontSize: t.fontSize,
+              color: t.color,
+              fontFamily: t.fontFamily,
+              width: t.width,
+              height: t.height
+            })),
+            canvasWidth: canvasWidth,
+            canvasHeight: canvasHeight
+          };
+          
+          // Save to repository (this will make phrases available for future suggestions)
+          await repository.save(tempComposition);
+        } catch (err) {
+          // Fail silently for auto-save
+          console.debug('Auto-save composition failed:', err);
+        }
+      };
 
-    // Fetch recent tickets (titles + body) in the background and extract phrases.
+      // Debounce auto-save to avoid excessive saves
+      const timeoutId = setTimeout(saveCurrentComposition, 2000);
+      return () => clearTimeout(timeoutId);
+    }, [texts, canvasWidth, canvasHeight, repository]);
+
+    // Fetch repository phrases on mount and when texts change
     React.useEffect(() => {
       let mounted = true;
-      if (ticketPhrasesRef.current && ticketDataRef.current) {
-        setTicketsLoaded(true);
-        return;
-      }
-
-      // Non-blocking fetch
-      (async () => {
+      
+      const loadRepositoryPhrases = async () => {
         try {
-          const res = await fetch('/api/tickets');
-          if (!res.ok) throw new Error('failed to fetch tickets');
-          const data = await res.json();
-
-          // Expect data to be array of { id?: string, title?: string, body?: string }
-          const allPhrases = new Set<string>();
-          (data || []).forEach((t: any) => {
-            // Add whole ticket title as a suggestion
-            if (t.title) {
-              allPhrases.add(t.title);
-              // Add ticket reference in format "#123"
-              if (t.id) {
-                allPhrases.add(`#${t.id}`);
-                // Add formatted ticket reference "#123: Title"
-                allPhrases.add(`#${t.id}: ${t.title}`);
-              }
-              // Also add extracted phrases from title
-              extractPhrasesFromText(t.title).forEach(p => allPhrases.add(p));
-            }
-            if (t.body) {
-              extractPhrasesFromText(t.body).forEach(p => allPhrases.add(p));
-            }
-          });
-
+          const phrases = await repository.suggestPhrases({ limit: 200 });
           if (mounted) {
-            ticketPhrasesRef.current = allPhrases;
-            ticketDataRef.current = data;
-            setTicketsLoaded(true);
+            setRepositoryPhrases(phrases.map(p => ({
+              value: p.value,
+              score: p.score,
+              source: p.source,
+              originId: p.originId
+            })));
           }
         } catch (err) {
-          // fail silently; tickets are optional
-          console.error('Could not load ticket phrases for autocomplete', err);
-          if (mounted) setTicketsLoaded(true);
+          console.error('Could not load repository phrases for autocomplete', err);
+          if (mounted) setRepositoryPhrases([]);
         }
-      })();
+      };
 
+      loadRepositoryPhrases();
       return () => { mounted = false; };
-    }, [extractPhrasesFromText]);
+    }, [repository, texts.length]); // Re-fetch when number of texts changes
 
-    // Merge local phrases and ticket phrases, mark source, dedupe and rank
+    // Merge local phrases and repository phrases, mark source, dedupe and rank
     const suggestions = React.useMemo((): AutocompleteSuggestion[] => {
-      // Map phrase => metadata including count, most recent updated_at (for tickets), source, originId
-      const phraseMap = new Map<string, { count: number; source: string; latestUpdatedAt?: number; originId?: string }>();
+      // Map phrase => metadata including count, source, score
+      const phraseMap = new Map<string, { count: number; source: string; score: number; originId?: string }>();
 
-      // Add local phrases first
-      texts.forEach(text => {
-        extractPhrasesFromText(text.text).forEach(p => {
-          const key = p;
-          const prev = phraseMap.get(key);
-          phraseMap.set(key, { count: (prev?.count || 0) + 1, source: 'local', latestUpdatedAt: prev?.latestUpdatedAt });
+      // Add local phrases first with boost
+      localPhrases.forEach(phrase => {
+        phraseMap.set(phrase, { 
+          count: 1, 
+          source: 'local', 
+          score: 5, // Local boost as specified
+          originId: undefined 
         });
       });
 
-      // Add ticket phrases (if any) and include origin tracking
-      if (ticketPhrasesRef.current && ticketDataRef.current) {
-        ticketPhrasesRef.current.forEach(p => {
-          const key = p;
-          const prev = phraseMap.get(key);
-          
-          // Find the ticket this phrase came from to set originId
-          let originId: string | undefined;
-          const matchingTicket = ticketDataRef.current?.find((t: any) => {
-            // Check if this phrase is the ticket title, ticket reference, or formatted reference
-            return t.title === p || 
-                   `#${t.id}` === p || 
-                   `#${t.id}: ${t.title}` === p ||
-                   (t.title && extractPhrasesFromText(t.title).has(p)) ||
-                   (t.body && extractPhrasesFromText(t.body).has(p));
+      // Add repository phrases
+      repositoryPhrases.forEach(phrase => {
+        const existing = phraseMap.get(phrase.value);
+        if (existing) {
+          // If phrase exists locally, keep local source and add to score
+          phraseMap.set(phrase.value, {
+            count: existing.count + 1,
+            source: existing.source,
+            score: existing.score + phrase.score,
+            originId: existing.originId || phrase.originId
           });
-          
-          if (matchingTicket) {
-            originId = matchingTicket.id;
-          }
-          
-          if (prev) {
-            // If phrase already exists locally, increment count and keep local source
-            phraseMap.set(key, { count: prev.count + 1, source: prev.source, latestUpdatedAt: prev.latestUpdatedAt, originId: prev.originId });
-          } else {
-            // ticket-sourced phrase
-            const updatedAt = matchingTicket?.updated_at ? new Date(matchingTicket.updated_at).getTime() : undefined;
-            phraseMap.set(key, { count: 1, source: 'ticket', latestUpdatedAt: updatedAt, originId });
-          }
-        });
-      }
-
-      // Convert to suggestions array and compute a base score using frequency, recency and source
-      const arr: AutocompleteSuggestion[] = Array.from(phraseMap.entries()).map(([value, meta]) => {
-        // base score: frequency weight
-        let score = Math.log(1 + meta.count) * 100;
-        // source weight: prefer local phrases
-        if (meta.source === 'local') score += 200;
-        // recency: if latestUpdatedAt present, scale into [0..100]
-        if (meta.latestUpdatedAt) {
-          const ageMs = Date.now() - meta.latestUpdatedAt;
-          const days = ageMs / (1000 * 60 * 60 * 24);
-          score += Math.max(0, 80 - days); // more recent -> higher score
+        } else {
+          // Repository-sourced phrase
+          phraseMap.set(phrase.value, {
+            count: 1,
+            source: phrase.source,
+            score: phrase.score,
+            originId: phrase.originId
+          });
         }
-
-        return {
-          value,
-          source: meta.source as any,
-          originId: meta.originId,
-          score,
-        } as AutocompleteSuggestion;
       });
 
-      // Final sort by base score desc, then longer phrases, then alphabetic
+      // Convert to suggestions array
+      const arr: AutocompleteSuggestion[] = Array.from(phraseMap.entries()).map(([value, meta]) => ({
+        value,
+        source: meta.source as any,
+        originId: meta.originId,
+        score: meta.score,
+      }));
+
+      // Final sort by score desc, then longer phrases, then alphabetic
       arr.sort((a, b) => {
         const sa = a.score || 0;
         const sb = b.score || 0;
@@ -237,7 +221,7 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
       });
 
       return arr;
-    }, [texts, extractPhrasesFromText, ticketsLoaded]);
+    }, [localPhrases, repositoryPhrases]);
 
     // Get canvas rect for overlay positioning
     const [canvasRect, setCanvasRect] = React.useState<DOMRect | undefined>();
