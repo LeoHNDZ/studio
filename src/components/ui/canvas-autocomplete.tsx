@@ -190,15 +190,8 @@ export function CanvasAutocomplete({
                 onMouseEnter={() => setSelectedIndex(index)}
               >
                 <span className="truncate">
-                  {suggestion.label || suggestion.value}
+                  {suggestion.value}
                 </span>
-                {/* subtle source badge */}
-                {suggestion.source && suggestion.source !== 'local' && (
-                  <span className="ml-2 text-xs text-muted-foreground lowercase pl-2 border-l border-border">
-                    {suggestion.source}
-                    {suggestion.originId && ` #${suggestion.originId}`}
-                  </span>
-                )}
               </div>
             ))}
           </div>
