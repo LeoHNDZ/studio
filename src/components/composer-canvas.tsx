@@ -837,13 +837,15 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
       return 'default';
     }
     
-    const onContextMenuSelect = (option: 'text' | 'date') => {
+    const onContextMenuSelect = (option: 'text' | 'date' | 'check') => {
       if (!contextMenu) return;
       const { canvasX, canvasY } = contextMenu;
       
       let textToAdd = 'New Text';
       if (option === 'date') {
         textToAdd = new Date().toLocaleDateString();
+      } else if (option === 'check') {
+        textToAdd = '✔';
       }
       
       onTextAdd(textToAdd, { x: canvasX, y: canvasY });
@@ -862,6 +864,7 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
             <DropdownMenuContent>
                 <DropdownMenuItem onClick={() => onContextMenuSelect('text')}>Add Text</DropdownMenuItem>
                 <DropdownMenuItem onClick={() => onContextMenuSelect('date')}>Add Date</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => onContextMenuSelect('check')}>Add Checkmark</DropdownMenuItem>
             </DropdownMenuContent>
         </DropdownMenu>
 
