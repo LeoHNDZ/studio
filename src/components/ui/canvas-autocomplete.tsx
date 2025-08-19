@@ -196,6 +196,7 @@ export function CanvasAutocomplete({
                 {suggestion.source && suggestion.source !== 'local' && (
                   <span className="ml-2 text-xs text-muted-foreground lowercase pl-2 border-l border-border">
                     {suggestion.source}
+                    {suggestion.originId && ` #${suggestion.originId}`}
                   </span>
                 )}
               </div>

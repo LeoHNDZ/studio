@@ -103,8 +103,9 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
       return phrases;
     }, []);
 
-    // Cache fetched ticket phrases in a ref to avoid re-fetching across renders
+    // Cache fetched ticket data and phrases in a ref to avoid re-fetching across renders
     const ticketPhrasesRef = React.useRef<Set<string> | null>(null);
+    const ticketDataRef = React.useRef<any[] | null>(null);
 
     // State to signal ticket fetch status (for future UI / telemetry)
     const [ticketsLoaded, setTicketsLoaded] = React.useState(false);
@@ -112,7 +113,7 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
     // Fetch recent tickets (titles + body) in the background and extract phrases.
     React.useEffect(() => {
       let mounted = true;
-      if (ticketPhrasesRef.current) {
+      if (ticketPhrasesRef.current && ticketDataRef.current) {
         setTicketsLoaded(true);
         return;
       }
@@ -127,7 +128,16 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
           // Expect data to be array of { id?: string, title?: string, body?: string }
           const allPhrases = new Set<string>();
           (data || []).forEach((t: any) => {
+            // Add whole ticket title as a suggestion
             if (t.title) {
+              allPhrases.add(t.title);
+              // Add ticket reference in format "#123"
+              if (t.id) {
+                allPhrases.add(`#${t.id}`);
+                // Add formatted ticket reference "#123: Title"
+                allPhrases.add(`#${t.id}: ${t.title}`);
+              }
+              // Also add extracted phrases from title
               extractPhrasesFromText(t.title).forEach(p => allPhrases.add(p));
             }
             if (t.body) {
@@ -137,6 +147,7 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
 
           if (mounted) {
             ticketPhrasesRef.current = allPhrases;
+            ticketDataRef.current = data;
             setTicketsLoaded(true);
           }
         } catch (err) {
@@ -163,17 +174,34 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
         });
       });
 
-      // Add ticket phrases (if any). Note: ticketPhrasesRef currently stores only strings; in future we can store richer objects per phrase.
-      if (ticketPhrasesRef.current) {
+      // Add ticket phrases (if any) and include origin tracking
+      if (ticketPhrasesRef.current && ticketDataRef.current) {
         ticketPhrasesRef.current.forEach(p => {
           const key = p;
           const prev = phraseMap.get(key);
+          
+          // Find the ticket this phrase came from to set originId
+          let originId: string | undefined;
+          const matchingTicket = ticketDataRef.current?.find((t: any) => {
+            // Check if this phrase is the ticket title, ticket reference, or formatted reference
+            return t.title === p || 
+                   `#${t.id}` === p || 
+                   `#${t.id}: ${t.title}` === p ||
+                   (t.title && extractPhrasesFromText(t.title).has(p)) ||
+                   (t.body && extractPhrasesFromText(t.body).has(p));
+          });
+          
+          if (matchingTicket) {
+            originId = matchingTicket.id;
+          }
+          
           if (prev) {
             // If phrase already exists locally, increment count and keep local source
-            phraseMap.set(key, { count: prev.count + 1, source: prev.source, latestUpdatedAt: prev.latestUpdatedAt });
+            phraseMap.set(key, { count: prev.count + 1, source: prev.source, latestUpdatedAt: prev.latestUpdatedAt, originId: prev.originId });
           } else {
             // ticket-sourced phrase
-            phraseMap.set(key, { count: 1, source: 'ticket' });
+            const updatedAt = matchingTicket?.updated_at ? new Date(matchingTicket.updated_at).getTime() : undefined;
+            phraseMap.set(key, { count: 1, source: 'ticket', latestUpdatedAt: updatedAt, originId });
           }
         });
       }
