@@ -3,7 +3,14 @@ import { cn } from '@/lib/utils';
 
 export interface AutocompleteSuggestion {
   value: string;
+  // friendly display label (optional). If not provided `value` is used.
   label?: string;
+  // where this suggestion came from. 'local' = current composition, 'ticket' = other issues/tickets
+  source?: 'local' | 'ticket' | string;
+  // optional origin identifier (e.g. ticket id) for future UI/tooling
+  originId?: string;
+  // precomputed base score from the source corpus (optional)
+  score?: number;
 }
 
 export interface CanvasAutocompleteProps {
@@ -32,14 +39,35 @@ export function CanvasAutocomplete({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const suggestionRefs = useRef<(HTMLDivElement | null)[]>([]);
 
-  // Filter suggestions based on current input
+  // Filter and rank suggestions based on current input and suggestion base score.
   const filteredSuggestions = React.useMemo(() => {
     if (!value || value.length < 2) return [];
-    
+
     const query = value.toLowerCase();
+
+    // compute a match score for query relative to suggestion value
+    const matchScore = (s: AutocompleteSuggestion) => {
+      const v = s.value.toLowerCase();
+      if (v === query) return 1000 + (s.score || 0); // exact match highest
+      let score = s.score || 0;
+      if (v.startsWith(query)) score += 500; // strong prefix match
+      // token-level prefix (each token startsWith)
+      const qTokens = query.split(/\s+/).filter(Boolean);
+      const vTokens = v.split(/\s+/).filter(Boolean);
+      const tokenPrefixMatches = qTokens.every((qt, i) => vTokens[i]?.startsWith(qt));
+      if (tokenPrefixMatches) score += 200;
+      if (v.includes(query)) score += 50; // weaker contains match
+      // shorter suggestion (in chars) gets a tiny bonus to favor concise phrases
+      score += Math.max(0, 20 - v.length * 0.2);
+      return score;
+    };
+
     return suggestions
       .filter(s => s.value.toLowerCase().includes(query) && s.value !== value)
-      .slice(0, 5); // Limit to 5 suggestions
+      .map(s => ({ s, score: matchScore(s) }))
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 5)
+      .map(x => x.s);
   }, [value, suggestions]);
 
   // Show/hide suggestions based on filtered results
@@ -164,6 +192,12 @@ export function CanvasAutocomplete({
                 <span className="truncate">
                   {suggestion.label || suggestion.value}
                 </span>
+                {/* subtle source badge */}
+                {suggestion.source && suggestion.source !== 'local' && (
+                  <span className="ml-2 text-xs text-muted-foreground lowercase pl-2 border-l border-border">
+                    {suggestion.source}
+                  </span>
+                )}
               </div>
             ))}
           </div>

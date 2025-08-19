@@ -84,37 +84,132 @@ export const ComposerCanvas = React.forwardRef<ComposerCanvasHandle, ComposerCan
       setEditingTextId(null);
     }, [editingTextId, editingText, onDeleteText, setEditingTextId]);
 
-    // Generate autocomplete suggestions from existing text tokens (n-grams up to length 4)
-    const suggestions = React.useMemo((): AutocompleteSuggestion[] => {
+    // Local phrases extractor (n-grams up to length 4)
+    const extractPhrasesFromText = React.useCallback((raw: string) => {
       const phrases = new Set<string>();
-      
-      texts.forEach(text => {
-        const words = text.text
-          .split(/\s+/)
-          .map(word => word.trim())
-          .filter(word => word.length > 0);
-        
-        // Generate n-grams of length 1 to 4
-        for (let i = 0; i < words.length; i++) {
-          for (let len = 1; len <= Math.min(4, words.length - i); len++) {
-            const ngram = words.slice(i, i + len).join(' ');
-            if (ngram.length >= 2) { // Only include phrases with at least 2 characters
-              phrases.add(ngram);
-            }
+      const words = raw
+        .split(/\s+/)
+        .map(w => w.trim())
+        .filter(w => w.length > 0);
+
+      for (let i = 0; i < words.length; i++) {
+        for (let len = 1; len <= Math.min(4, words.length - i); len++) {
+          const ngram = words.slice(i, i + len).join(' ');
+          if (ngram.length >= 2) {
+            phrases.add(ngram);
           }
         }
+      }
+      return phrases;
+    }, []);
+
+    // Cache fetched ticket phrases in a ref to avoid re-fetching across renders
+    const ticketPhrasesRef = React.useRef<Set<string> | null>(null);
+
+    // State to signal ticket fetch status (for future UI / telemetry)
+    const [ticketsLoaded, setTicketsLoaded] = React.useState(false);
+
+    // Fetch recent tickets (titles + body) in the background and extract phrases.
+    React.useEffect(() => {
+      let mounted = true;
+      if (ticketPhrasesRef.current) {
+        setTicketsLoaded(true);
+        return;
+      }
+
+      // Non-blocking fetch
+      (async () => {
+        try {
+          const res = await fetch('/api/tickets');
+          if (!res.ok) throw new Error('failed to fetch tickets');
+          const data = await res.json();
+
+          // Expect data to be array of { id?: string, title?: string, body?: string }
+          const allPhrases = new Set<string>();
+          (data || []).forEach((t: any) => {
+            if (t.title) {
+              extractPhrasesFromText(t.title).forEach(p => allPhrases.add(p));
+            }
+            if (t.body) {
+              extractPhrasesFromText(t.body).forEach(p => allPhrases.add(p));
+            }
+          });
+
+          if (mounted) {
+            ticketPhrasesRef.current = allPhrases;
+            setTicketsLoaded(true);
+          }
+        } catch (err) {
+          // fail silently; tickets are optional
+          console.error('Could not load ticket phrases for autocomplete', err);
+          if (mounted) setTicketsLoaded(true);
+        }
+      })();
+
+      return () => { mounted = false; };
+    }, [extractPhrasesFromText]);
+
+    // Merge local phrases and ticket phrases, mark source, dedupe and rank
+    const suggestions = React.useMemo((): AutocompleteSuggestion[] => {
+      // Map phrase => metadata including count, most recent updated_at (for tickets), source, originId
+      const phraseMap = new Map<string, { count: number; source: string; latestUpdatedAt?: number; originId?: string }>();
+
+      // Add local phrases first
+      texts.forEach(text => {
+        extractPhrasesFromText(text.text).forEach(p => {
+          const key = p;
+          const prev = phraseMap.get(key);
+          phraseMap.set(key, { count: (prev?.count || 0) + 1, source: 'local', latestUpdatedAt: prev?.latestUpdatedAt });
+        });
       });
 
-      return Array.from(phrases)
-        .map(phrase => ({ value: phrase }))
-        .sort((a, b) => {
-          // Sort by frequency (longer phrases first, then alphabetically)
-          if (a.value.split(' ').length !== b.value.split(' ').length) {
-            return b.value.split(' ').length - a.value.split(' ').length;
+      // Add ticket phrases (if any). Note: ticketPhrasesRef currently stores only strings; in future we can store richer objects per phrase.
+      if (ticketPhrasesRef.current) {
+        ticketPhrasesRef.current.forEach(p => {
+          const key = p;
+          const prev = phraseMap.get(key);
+          if (prev) {
+            // If phrase already exists locally, increment count and keep local source
+            phraseMap.set(key, { count: prev.count + 1, source: prev.source, latestUpdatedAt: prev.latestUpdatedAt });
+          } else {
+            // ticket-sourced phrase
+            phraseMap.set(key, { count: 1, source: 'ticket' });
           }
-          return a.value.localeCompare(b.value);
         });
-    }, [texts]);
+      }
+
+      // Convert to suggestions array and compute a base score using frequency, recency and source
+      const arr: AutocompleteSuggestion[] = Array.from(phraseMap.entries()).map(([value, meta]) => {
+        // base score: frequency weight
+        let score = Math.log(1 + meta.count) * 100;
+        // source weight: prefer local phrases
+        if (meta.source === 'local') score += 200;
+        // recency: if latestUpdatedAt present, scale into [0..100]
+        if (meta.latestUpdatedAt) {
+          const ageMs = Date.now() - meta.latestUpdatedAt;
+          const days = ageMs / (1000 * 60 * 60 * 24);
+          score += Math.max(0, 80 - days); // more recent -> higher score
+        }
+
+        return {
+          value,
+          source: meta.source as any,
+          originId: meta.originId,
+          score,
+        } as AutocompleteSuggestion;
+      });
+
+      // Final sort by base score desc, then longer phrases, then alphabetic
+      arr.sort((a, b) => {
+        const sa = a.score || 0;
+        const sb = b.score || 0;
+        if (sa !== sb) return sb - sa;
+        if (a.value.split(' ').length !== b.value.split(' ').length) return b.value.split(' ').length - a.value.split(' ').length;
+        return a.value.localeCompare(b.value);
+      });
+
+      return arr;
+    }, [texts, extractPhrasesFromText, ticketsLoaded]);
 
     // Get canvas rect for overlay positioning
     const [canvasRect, setCanvasRect] = React.useState<DOMRect | undefined>();
