@@ -39,6 +39,20 @@ export function CanvasAutocomplete({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const suggestionRefs = useRef<(HTMLDivElement | null)[]>([]);
 
+  // Normalization function for single-line text
+  const normalizeSingleLine = (input: string) => input
+    .replace(/[\r\n]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  // Auto-resize textarea to fit content
+  const autoResizeTextarea = React.useCallback(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+      textareaRef.current.style.height = textareaRef.current.scrollHeight + 'px';
+    }
+  }, []);
+
   // Filter and rank suggestions based on current input and suggestion base score.
   const filteredSuggestions = React.useMemo(() => {
     if (!value || value.length < 2) return [];
@@ -83,6 +97,33 @@ export function CanvasAutocomplete({
       textareaRef.current.select();
     }
   }, []);
+
+  // Auto-resize when value changes
+  useEffect(() => {
+    autoResizeTextarea();
+  }, [value, autoResizeTextarea]);
+
+  // Handle text change with auto-resize
+  const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    onChange(e.target.value);
+    // Auto-resize after value change
+    setTimeout(autoResizeTextarea, 0);
+  };
+
+  // Handle paste with normalization
+  const handlePaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    e.preventDefault();
+    const pastedText = e.clipboardData.getData('text/plain');
+    const normalizedText = normalizeSingleLine(pastedText);
+    
+    onChange(normalizedText);
+    
+    // Update textarea value and trigger resize
+    if (textareaRef.current) {
+      textareaRef.current.value = normalizedText;
+      autoResizeTextarea();
+    }
+  };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Escape') {
@@ -160,7 +201,8 @@ export function CanvasAutocomplete({
       <textarea
         ref={textareaRef}
         value={value}
-        onChange={(e) => onChange(e.target.value)}
+        onChange={handleChange}
+        onPaste={handlePaste}
         onKeyDown={handleKeyDown}
         placeholder={placeholder}
         style={style}

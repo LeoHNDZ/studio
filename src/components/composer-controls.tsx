@@ -67,6 +67,58 @@ export function ComposerControls({
   const [quoteTopic, setQuoteTopic] = React.useState('');
   const [isSuggesting, setIsSuggesting] = React.useState(false);
   const { toast } = useToast();
+  const textAreaRef = React.useRef<HTMLTextAreaElement>(null);
+
+  // Normalization function for single-line text
+  const normalizeSingleLine = (input: string) => input
+    .replace(/[\r\n]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  // Auto-resize textarea to fit content
+  const autoResizeTextarea = React.useCallback(() => {
+    if (textAreaRef.current) {
+      textAreaRef.current.style.height = 'auto';
+      textAreaRef.current.style.height = textAreaRef.current.scrollHeight + 'px';
+    }
+  }, []);
+
+  // Auto-resize when selectedText changes
+  React.useEffect(() => {
+    if (selectedText?.id) {
+      autoResizeTextarea();
+      // Optionally select text on initial focus
+      if (textAreaRef.current) {
+        textAreaRef.current.select();
+      }
+    }
+  }, [selectedText?.id, selectedText?.text, autoResizeTextarea]);
+
+  // Handle text change with auto-resize
+  const handleTextChange = React.useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    if (selectedText) {
+      onUpdateText(selectedText.id, { text: e.target.value });
+      // Auto-resize after state update
+      setTimeout(autoResizeTextarea, 0);
+    }
+  }, [selectedText, onUpdateText, autoResizeTextarea]);
+
+  // Handle paste with normalization
+  const handlePaste = React.useCallback((e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    if (!selectedText) return;
+    
+    e.preventDefault();
+    const pastedText = e.clipboardData.getData('text/plain');
+    const normalizedText = normalizeSingleLine(pastedText);
+    
+    onUpdateText(selectedText.id, { text: normalizedText });
+    
+    // Update textarea value and trigger resize
+    if (textAreaRef.current) {
+      textAreaRef.current.value = normalizedText;
+      autoResizeTextarea();
+    }
+  }, [selectedText, onUpdateText, autoResizeTextarea, normalizeSingleLine]);
 
   const handleAddContact = () => {
     if (newContactName.trim() && newContactDetails.trim()) {
@@ -145,11 +197,13 @@ export function ComposerControls({
                 <div className="space-y-2">
                   <Label htmlFor="text-content">Content</Label>
                    <Textarea
+                      ref={textAreaRef}
                       id="text-content"
                       value={selectedText.text}
-                      onChange={(e) => onUpdateText(selectedText.id, { text: e.target.value })}
-                      rows={4}
-                      className="bg-background/50"
+                      onChange={handleTextChange}
+                      onPaste={handlePaste}
+                      rows={1}
+                      className="bg-background/50 resize-none overflow-hidden"
                     />
                 </div>
                 <div className="space-y-2">
