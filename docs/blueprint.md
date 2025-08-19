@@ -8,8 +8,20 @@
 - PNG Export: Export the final ticket as a PNG image, with or without the background image.
 - Text-Only Printing: Print the text-only version of the ticket, preserving the exact positions of the text elements.
 - Quote Suggestion: Suggest quotes from a set of user-defined sources to add to the ticket using a generative AI tool.
+- Composition-Based Autocomplete: Smart autocomplete suggestions based on previously created compositions, learning from user's own text patterns and phrases.
 - Smoke Tests: Implement simple smoke tests to verify core functionalities.
 - Save/Import Contacts: Save contacts in browser localStorage and allow importing them for use in the app.
+
+## Autocomplete System:
+
+The autocomplete system provides intelligent phrase suggestions while editing text elements:
+
+- **Learning Source**: Extracts phrases from user's previously created compositions (stored locally)
+- **Phrase Extraction**: Analyzes 1-5 word phrases with frequency and recency scoring
+- **Smart Scoring**: Uses exponential decay with 60-minute half-life to prioritize recent phrases
+- **Local Boost**: Current canvas text gets priority boost for immediate reuse
+- **Auto-persistence**: Compositions auto-save for future phrase learning
+- **Configurable**: Can switch between local storage and future API backends
 
 ## Style Guidelines:
 
