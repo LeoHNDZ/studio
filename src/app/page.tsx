@@ -6,76 +6,52 @@ import type { Ticket } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { nanoid } from 'nanoid';
 import { TicketList } from '@/components/ticket-list';
+import { createTicket, deleteTicket, deleteTickets, getTickets } from '@/lib/actions';
 
-const defaultTicket = (width: number, height: number): Ticket => ({
-  id: nanoid(),
-  name: 'Untitled Ticket',
-  backgroundImageUrl: '/Ticket Template 2.png',
-  texts: [],
-  canvasWidth: width,
-  canvasHeight: height,
-  createdAt: Date.now(),
-});
 
 export default function DashboardPage() {
   const [tickets, setTickets] = React.useState<Ticket[]>([]);
   const router = useRouter();
 
   React.useEffect(() => {
-    try {
-      const savedTickets = localStorage.getItem('tickets');
-      if (savedTickets) {
-        const parsedTickets = JSON.parse(savedTickets);
-        if (Array.isArray(parsedTickets)) {
+    const fetchTickets = async () => {
+      try {
+        const serverTickets = await getTickets();
+        if (Array.isArray(serverTickets)) {
           // Add createdAt if it's missing for backward compatibility
-          const ticketsWithDate = parsedTickets.map(t => ({...t, createdAt: t.createdAt || Date.now()}));
+          const ticketsWithDate = serverTickets.map(t => ({...t, createdAt: t.createdAt || Date.now()}));
           setTickets(ticketsWithDate);
-          return;
         }
+      } catch (error) {
+        console.error("Failed to load tickets from server", error);
       }
-    } catch (error) {
-      console.error("Failed to load tickets from localStorage", error);
-    }
+    };
+    fetchTickets();
   }, []);
 
   const createNewTicket = () => {
     const img = new Image();
-    img.src = '/Ticket.png';
-    img.onload = () => {
-      const newTicket = defaultTicket(img.width, img.height);
-      const updatedTickets = [...tickets, newTicket];
-      localStorage.setItem('tickets', JSON.stringify(updatedTickets));
-      setTickets(updatedTickets);
+    img.src = '/Ticket Template 2.png';
+    img.onload = async () => {
+      const newTicket = await createTicket(img.width, img.height);
       router.push(`/edit/${newTicket.id}`);
     };
-    img.onerror = () => {
+    img.onerror = async () => {
       // Fallback to default size if image fails to load
-      const newTicket = defaultTicket(1200, 630);
-      const updatedTickets = [...tickets, newTicket];
-      localStorage.setItem('tickets', JSON.stringify(updatedTickets));
-      setTickets(updatedTickets);
+      const newTicket = await createTicket(1200, 630);
       router.push(`/edit/${newTicket.id}`);
     }
   };
 
-  const deleteTicket = (id: string) => {
-    const updatedTickets = tickets.filter(t => t.id !== id);
-    localStorage.setItem('tickets', JSON.stringify(updatedTickets));
-    setTickets(updatedTickets);
+  const handleDeleteTicket = async (id: string) => {
+    await deleteTicket(id);
+    setTickets(prev => prev.filter(t => t.id !== id));
   };
 
-  const deleteTickets = (ids: string[]) => {
-    const updatedTickets = tickets.filter(t => !ids.includes(t.id));
-    localStorage.setItem('tickets', JSON.stringify(updatedTickets));
-    setTickets(updatedTickets);
-  };
-  
-  const updateTicket = (id: string, updates: Partial<Ticket>) => {
-    const updatedTickets = tickets.map(t => t.id === id ? {...t, ...updates} : t);
-    localStorage.setItem('tickets', JSON.stringify(updatedTickets));
-    setTickets(updatedTickets);
+  const handleDeleteTickets = async (ids: string[]) => {
+    await deleteTickets(ids);
+    setTickets(prev => prev.filter(t => !ids.includes(t.id)));
   };
 
 
@@ -93,8 +69,8 @@ export default function DashboardPage() {
       <main className="container mx-auto p-4">
         <TicketList 
             tickets={tickets} 
-            onDelete={deleteTicket}
-            onDeleteMultiple={deleteTickets}
+            onDelete={handleDeleteTicket}
+            onDeleteMultiple={handleDeleteTickets}
         />
       </main>
     </div>

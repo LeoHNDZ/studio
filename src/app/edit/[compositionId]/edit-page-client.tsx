@@ -17,18 +17,16 @@ import { Button } from '@/components/ui/button';
 import { Download, Printer, Image as ImageIcon, RefreshCcw, ArrowLeft, Copy } from 'lucide-react';
 import { nanoid } from 'nanoid';
 import { useToast } from '@/hooks/use-toast';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { updateTicket } from '@/lib/actions';
 
 interface EditPageClientProps {
   compositionId: string;
+  initialTicket: Ticket;
 }
 
-export default function EditPageClient({ compositionId }: EditPageClientProps) {
-  const ticketId = compositionId;
-  const router = useRouter();
-
-  const [ticket, setTicket] = React.useState<Ticket | null>(null);
+export default function EditPageClient({ compositionId, initialTicket }: EditPageClientProps) {
+  const [ticket, setTicket] = React.useState<Ticket | null>(initialTicket);
   const [backgroundImage, setBackgroundImage] = React.useState<HTMLImageElement | null>(null);
   
   const [selectedTextId, setSelectedTextId] = React.useState<string | null>(null);
@@ -38,29 +36,6 @@ export default function EditPageClient({ compositionId }: EditPageClientProps) {
   const { toast } = useToast();
   
   const [pendingText, setPendingText] = React.useState<string | null>(null);
-
-  React.useEffect(() => {
-    if (!ticketId) return;
-
-    try {
-      const savedTickets = localStorage.getItem('tickets');
-      if (savedTickets) {
-        const parsedTickets = JSON.parse(savedTickets) as Ticket[];
-        const currentTicket = parsedTickets.find(t => t.id === ticketId);
-        if (currentTicket) {
-          setTicket(currentTicket);
-        } else {
-          toast({ title: "Error", description: "Ticket not found.", variant: 'destructive' });
-          router.push('/');
-        }
-      } else {
-         router.push('/');
-      }
-    } catch (error) {
-      console.error("Failed to load ticket from localStorage", error);
-      router.push('/');
-    }
-  }, [ticketId, router, toast]);
 
   React.useEffect(() => {
     if (ticket && ticket.backgroundImageUrl) {
@@ -74,24 +49,29 @@ export default function EditPageClient({ compositionId }: EditPageClientProps) {
   }, [ticket?.backgroundImageUrl]);
 
 
-  // Effect to save the current ticket to localStorage
+  // Effect to save the current ticket to the database with debouncing
   React.useEffect(() => {
     if (ticket) {
-       try {
-        const savedTickets = localStorage.getItem('tickets');
-        const tickets = savedTickets ? (JSON.parse(savedTickets) as Ticket[]) : [];
-        const updatedTickets = tickets.map(t => t.id === ticket.id ? ticket : t);
-        if (!updatedTickets.some(t => t.id === ticket.id)) {
-            updatedTickets.push(ticket);
+      const handler = setTimeout(async () => {
+        try {
+          await updateTicket(ticket);
+        } catch (error) {
+          console.error("Failed to save ticket", error);
+          toast({
+            variant: "destructive",
+            title: "Uh oh! Something went wrong.",
+            description: "Could not save your changes to the database.",
+          });
         }
-        localStorage.setItem('tickets', JSON.stringify(updatedTickets));
-      } catch (error) {
-        console.error("Failed to save ticket", error);
-      }
-    }
-  }, [ticket]);
+      }, 500);
 
-  // Load contacts
+      return () => {
+        clearTimeout(handler);
+      };
+    }
+  }, [ticket, toast]);
+
+  // Load contacts from localStorage
   React.useEffect(() => {
     try {
       const savedContacts = localStorage.getItem('contacts');
@@ -103,7 +83,7 @@ export default function EditPageClient({ compositionId }: EditPageClientProps) {
     }
   }, []);
 
-  const updateTicket = (updates: Partial<Ticket>) => {
+  const updateTicketState = (updates: Partial<Ticket>) => {
     if (!ticket) return;
     setTicket(t => t ? { ...t, ...updates } : null);
   };
@@ -111,7 +91,7 @@ export default function EditPageClient({ compositionId }: EditPageClientProps) {
   const setTexts = (newTexts: TextElement[] | ((prev: TextElement[])=>TextElement[])) => {
       if(!ticket) return;
       const updatedTexts = typeof newTexts === 'function' ? newTexts(ticket.texts) : newTexts;
-      updateTicket({ texts: updatedTexts });
+      updateTicketState({ texts: updatedTexts });
   }
 
   const saveContacts = (updatedContacts: Contact[]) => {
@@ -135,11 +115,11 @@ export default function EditPageClient({ compositionId }: EditPageClientProps) {
   };
   
   const clearBackgroundImage = () => {
-    updateTicket({ backgroundImageUrl: null });
+    updateTicketState({ backgroundImageUrl: null });
   };
   
   const handleRestoreBackground = () => {
-    updateTicket({ backgroundImageUrl: '/Ticket.png' });
+    updateTicketState({ backgroundImageUrl: '/Ticket.png' });
   };
 
   const addText = (text: string, options?: Partial<Omit<TextElement, 'id' | 'text'>>) => {
@@ -159,7 +139,7 @@ export default function EditPageClient({ compositionId }: EditPageClientProps) {
     };
     
     const newTexts = [...ticket.texts, newText];
-    updateTicket({ texts: newTexts });
+    updateTicketState({ texts: newTexts });
     setSelectedTextId(newText.id);
   };
   
@@ -172,13 +152,13 @@ export default function EditPageClient({ compositionId }: EditPageClientProps) {
   const updateText = (id: string, newProps: Partial<TextElement>) => {
     if (!ticket) return;
     const newTexts = ticket.texts.map((t) => (t.id === id ? { ...t, ...newProps } : t));
-    updateTicket({ texts: newTexts });
+    updateTicketState({ texts: newTexts });
   };
 
   const deleteText = (id: string) => {
     if (!ticket) return;
     const newTexts = ticket.texts.filter((t) => t.id !== id);
-    updateTicket({ texts: newTexts });
+    updateTicketState({ texts: newTexts });
 
     if (selectedTextId === id) {
       setSelectedTextId(null);
@@ -301,11 +281,8 @@ export default function EditPageClient({ compositionId }: EditPageClientProps) {
     }, 100);
 };
 
-  const handleDuplicate = () => {
+  const handleDuplicate = async () => {
     if (!ticket) return;
-
-    const savedTickets = localStorage.getItem('tickets');
-    const tickets = savedTickets ? (JSON.parse(savedTickets) as Ticket[]) : [];
 
     const newTicket: Ticket = {
       ...ticket,
@@ -314,10 +291,13 @@ export default function EditPageClient({ compositionId }: EditPageClientProps) {
       createdAt: Date.now(),
     };
 
-    const updatedTickets = [...tickets, newTicket];
-    localStorage.setItem('tickets', JSON.stringify(updatedTickets));
-    
-    window.open(`/edit/${newTicket.id}`, '_blank');
+    try {
+      await updateTicket(newTicket);
+      window.open(`/edit/${newTicket.id}`, '_blank');
+    } catch (e) {
+      console.error("Failed to duplicate ticket", e);
+      toast({ title: "Error", description: "Could not duplicate ticket.", variant: "destructive" });
+    }
   };
   
   if (!ticket) {
@@ -355,7 +335,7 @@ export default function EditPageClient({ compositionId }: EditPageClientProps) {
               isAddingText={!!pendingText}
               onAddContactText={addText}
               activeTicket={ticket}
-              onUpdateActiveTicket={updateTicket}
+              onUpdateActiveTicket={updateTicketState}
             />
           </SidebarContent>
         </Sidebar>
@@ -412,5 +392,3 @@ export default function EditPageClient({ compositionId }: EditPageClientProps) {
     </>
   );
 }
-
-    
