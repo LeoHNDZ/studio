@@ -38,10 +38,10 @@ export async function getDbPath(): Promise<string> {
 }
 
 export async function updateDbPath(newPath: string): Promise<{success: boolean, error?: string}> {
-    if (!newPath || typeof newPath !== 'string') {
+    if (typeof newPath !== 'string') {
         return { success: false, error: "Invalid path provided." };
     }
-    if (newPath.includes('..')) {
+    if (newPath && newPath.includes('..')) {
       return { success: false, error: "Invalid path: '..' is not allowed." };
     }
     try {
@@ -49,13 +49,15 @@ export async function updateDbPath(newPath: string): Promise<{success: boolean, 
       config.dbPath = newPath;
       await writeConfig(config);
 
-      const resolvedNewPath = path.resolve(newPath);
-      try {
-        await fs.access(resolvedNewPath);
-      } catch (e) {
-        // File doesn't exist, create it.
-        await fs.mkdir(path.dirname(resolvedNewPath), { recursive: true });
-        await fs.writeFile(resolvedNewPath, '[]', 'utf-8');
+      if (newPath) {
+        const resolvedNewPath = path.resolve(newPath);
+        try {
+          await fs.access(resolvedNewPath);
+        } catch (e) {
+          // File doesn't exist, create it.
+          await fs.mkdir(path.dirname(resolvedNewPath), { recursive: true });
+          await fs.writeFile(resolvedNewPath, '[]', 'utf-8');
+        }
       }
 
       revalidatePath('/');

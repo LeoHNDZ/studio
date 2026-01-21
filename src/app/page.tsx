@@ -137,9 +137,6 @@ export default function DashboardPage() {
               New Ticket
             </Button>
              <Dialog open={isSettingsOpen} onOpenChange={(isOpen) => {
-              if (!dbPath && !isOpen) {
-                  return;
-              }
               setIsSettingsOpen(isOpen);
               // Reset input field to current path when dialog is closed without saving
               if (!isOpen) {
@@ -151,11 +148,7 @@ export default function DashboardPage() {
                       <Cog className="h-4 w-4" />
                   </Button>
               </DialogTrigger>
-              <DialogContent onInteractOutside={(e) => {
-                  if (!dbPath) {
-                      e.preventDefault();
-                  }
-              }}>
+              <DialogContent>
                   <DialogHeader>
                       <DialogTitle>{dbPath ? 'Settings' : 'Welcome! Create or Select a Database'}</DialogTitle>
                   </DialogHeader>
@@ -172,9 +165,9 @@ export default function DashboardPage() {
                       </p>
                   </div>
                   <DialogFooter>
-                      {dbPath && <DialogClose asChild>
+                      <DialogClose asChild>
                           <Button variant="ghost">Cancel</Button>
-                      </DialogClose>}
+                      </DialogClose>
                       <Button onClick={handleSaveSettings}>Save</Button>
                   </DialogFooter>
               </DialogContent>
