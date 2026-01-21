@@ -1,3 +1,4 @@
+
 'use server';
 
 import fs from 'fs/promises';
@@ -6,10 +7,68 @@ import type { Ticket } from './types';
 import { revalidatePath } from 'next/cache';
 import { nanoid } from 'nanoid';
 
-const dbPath = path.resolve(process.env.DB_PATH || 'db/tickets.json');
+// --- Start of new config management logic ---
+const configPath = path.resolve('db/config.json');
+
+interface AppConfig {
+    dbPath: string;
+}
+
+const defaultConfig: AppConfig = {
+    dbPath: 'db/tickets.json'
+};
+
+async function readConfig(): Promise<AppConfig> {
+    try {
+        await fs.mkdir(path.dirname(configPath), { recursive: true });
+        const fileContent = await fs.readFile(configPath, 'utf-8');
+        return JSON.parse(fileContent) as AppConfig;
+    } catch (error) {
+        if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+            await writeConfig(defaultConfig);
+            return defaultConfig;
+        }
+        throw error;
+    }
+}
+
+async function writeConfig(config: AppConfig): Promise<void> {
+    await fs.mkdir(path.dirname(configPath), { recursive: true });
+    await fs.writeFile(configPath, JSON.stringify(config, null, 2), 'utf-8');
+}
+
+export async function getDbPath(): Promise<string> {
+    const config = await readConfig();
+    return config.dbPath;
+}
+
+export async function updateDbPath(newPath: string): Promise<{success: boolean, error?: string}> {
+    if (!newPath || typeof newPath !== 'string') {
+        return { success: false, error: "Invalid path provided." };
+    }
+    if (newPath.includes('..')) {
+      return { success: false, error: "Invalid path: '..' is not allowed." };
+    }
+    try {
+      const config = await readConfig();
+      config.dbPath = newPath;
+      await writeConfig(config);
+      revalidatePath('/');
+      return { success: true };
+    } catch(e: any) {
+      return { success: false, error: e.message || "Failed to update path." };
+    }
+}
+// --- End of new config management logic ---
+
+async function getResolvedDbPath(): Promise<string> {
+    const configuredPath = await getDbPath();
+    return path.resolve(configuredPath);
+}
 
 async function readDb(): Promise<Ticket[]> {
   try {
+    const dbPath = await getResolvedDbPath();
     const fileContent = await fs.readFile(dbPath, 'utf-8');
     if (!fileContent) {
       return [];
@@ -19,12 +78,14 @@ async function readDb(): Promise<Ticket[]> {
     if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
       return [];
     }
+    console.error("Error reading from DB:", error);
     throw error;
   }
 }
 
 async function writeDb(tickets: Ticket[]): Promise<void> {
   try {
+    const dbPath = await getResolvedDbPath();
     await fs.mkdir(path.dirname(dbPath), { recursive: true });
     await fs.writeFile(dbPath, JSON.stringify(tickets, null, 2), 'utf-8');
   } catch (error) {
