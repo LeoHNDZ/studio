@@ -28,11 +28,10 @@ export default function DashboardPage() {
   const { toast } = useToast();
 
   const [isSettingsOpen, setIsSettingsOpen] = React.useState(false);
-  const [dbPath, setDbPath] = React.useState('');
-  // Separate state for the input field inside the dialog
+  const [dbPath, setDbPath] = React.useState<string | null>(null);
   const [newDbPath, setNewDbPath] = React.useState('');
 
-  const fetchTickets = async () => {
+  const fetchTickets = React.useCallback(async () => {
     try {
       const serverTickets = await getTickets();
       if (Array.isArray(serverTickets)) {
@@ -49,15 +48,26 @@ export default function DashboardPage() {
       });
       setTickets([]); // Clear tickets on error
     }
-  };
+  }, [toast]);
 
   React.useEffect(() => {
-    fetchTickets();
     getDbPath().then(path => {
       setDbPath(path);
-      setNewDbPath(path);
+      setNewDbPath(path || 'db/tickets.json');
+      if (!path) {
+        setIsSettingsOpen(true);
+      }
     });
   }, []);
+
+  React.useEffect(() => {
+    if (dbPath) {
+      fetchTickets();
+    } else {
+      setTickets([]);
+    }
+  }, [dbPath, fetchTickets]);
+
 
   const handleSaveSettings = async () => {
     const result = await updateDbPath(newDbPath);
@@ -66,10 +76,8 @@ export default function DashboardPage() {
         setIsSettingsOpen(false);
         toast({
             title: 'Settings saved',
-            description: 'The database path has been updated.',
+            description: `Database path set to ${newDbPath}`,
         });
-        // Refetch tickets from the new path
-        fetchTickets(); 
     } else {
         toast({
             variant: 'destructive',
@@ -80,8 +88,17 @@ export default function DashboardPage() {
   };
 
   const createNewTicket = () => {
+    if (!dbPath) {
+        toast({
+            variant: "destructive",
+            title: "No Database Selected",
+            description: "Please create or select a database in the settings.",
+        });
+        return;
+    }
+
     const img = new Image();
-    img.src = '/Ticket Template 2.png';
+    img.src = '/Ticket.png';
     img.onload = async () => {
       const newTicket = await createTicket(img.width, img.height);
       router.push(`/edit/${newTicket.id}`);
@@ -103,6 +120,14 @@ export default function DashboardPage() {
     setTickets(prev => prev.filter(t => !ids.includes(t.id)));
   };
 
+  if (dbPath === null) {
+      return (
+          <div className="flex min-h-screen items-center justify-center">
+              <p>Loading configuration...</p>
+          </div>
+      )
+  }
+
 
   return (
     <div className="min-h-screen bg-transparent text-foreground">
@@ -115,10 +140,13 @@ export default function DashboardPage() {
               New Ticket
             </Button>
              <Dialog open={isSettingsOpen} onOpenChange={(isOpen) => {
+              if (!dbPath && !isOpen) {
+                  return;
+              }
               setIsSettingsOpen(isOpen);
               // Reset input field to current path when dialog is closed without saving
               if (!isOpen) {
-                setNewDbPath(dbPath);
+                setNewDbPath(dbPath || 'db/tickets.json');
               }
             }}>
               <DialogTrigger asChild>
@@ -126,9 +154,13 @@ export default function DashboardPage() {
                       <Cog className="h-4 w-4" />
                   </Button>
               </DialogTrigger>
-              <DialogContent>
+              <DialogContent onInteractOutside={(e) => {
+                  if (!dbPath) {
+                      e.preventDefault();
+                  }
+              }}>
                   <DialogHeader>
-                      <DialogTitle>Settings</DialogTitle>
+                      <DialogTitle>{dbPath ? 'Settings' : 'Welcome! Create or Select a Database'}</DialogTitle>
                   </DialogHeader>
                   <div className="space-y-2">
                       <Label htmlFor="db-path">Database File Path</Label>
@@ -139,13 +171,13 @@ export default function DashboardPage() {
                           placeholder="e.g., db/tickets.json"
                       />
                        <p className="text-sm text-muted-foreground">
-                          Path is relative to the project root.
+                          Enter a path to create a new database or select an existing one. Path is relative to the project root.
                       </p>
                   </div>
                   <DialogFooter>
-                      <DialogClose asChild>
+                      {dbPath && <DialogClose asChild>
                           <Button variant="ghost">Cancel</Button>
-                      </DialogClose>
+                      </DialogClose>}
                       <Button onClick={handleSaveSettings}>Save</Button>
                   </DialogFooter>
               </DialogContent>
@@ -154,11 +186,20 @@ export default function DashboardPage() {
         </div>
       </header>
       <main className="container mx-auto p-4">
-        <TicketList 
-            tickets={tickets} 
-            onDelete={handleDeleteTicket}
-            onDeleteMultiple={handleDeleteTickets}
-        />
+        {dbPath ? (
+            <TicketList 
+                tickets={tickets} 
+                onDelete={handleDeleteTicket}
+                onDeleteMultiple={handleDeleteTickets}
+            />
+        ) : (
+            <div className="text-center py-16">
+                <h2 className="text-xl font-semibold">No Database Selected</h2>
+                <p className="text-muted-foreground mt-2">
+                    Click the settings icon <Cog className="inline h-4 w-4" /> to create or select a database file.
+                </p>
+            </div>
+        )}
       </main>
     </div>
   );

@@ -14,10 +14,6 @@ interface AppConfig {
     dbPath: string;
 }
 
-const defaultConfig: AppConfig = {
-    dbPath: 'db/tickets.json'
-};
-
 async function readConfig(): Promise<AppConfig> {
     try {
         await fs.mkdir(path.dirname(configPath), { recursive: true });
@@ -25,8 +21,7 @@ async function readConfig(): Promise<AppConfig> {
         return JSON.parse(fileContent) as AppConfig;
     } catch (error) {
         if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-            await writeConfig(defaultConfig);
-            return defaultConfig;
+            return { dbPath: '' };
         }
         throw error;
     }
@@ -53,6 +48,16 @@ export async function updateDbPath(newPath: string): Promise<{success: boolean, 
       const config = await readConfig();
       config.dbPath = newPath;
       await writeConfig(config);
+
+      const resolvedNewPath = path.resolve(newPath);
+      try {
+        await fs.access(resolvedNewPath);
+      } catch (e) {
+        // File doesn't exist, create it.
+        await fs.mkdir(path.dirname(resolvedNewPath), { recursive: true });
+        await fs.writeFile(resolvedNewPath, '[]', 'utf-8');
+      }
+
       revalidatePath('/');
       return { success: true };
     } catch(e: any) {
@@ -63,12 +68,18 @@ export async function updateDbPath(newPath: string): Promise<{success: boolean, 
 
 async function getResolvedDbPath(): Promise<string> {
     const configuredPath = await getDbPath();
+    if (!configuredPath) {
+        return '';
+    }
     return path.resolve(configuredPath);
 }
 
 async function readDb(): Promise<Ticket[]> {
+  const dbPath = await getResolvedDbPath();
+  if (!dbPath) {
+    return [];
+  }
   try {
-    const dbPath = await getResolvedDbPath();
     const fileContent = await fs.readFile(dbPath, 'utf-8');
     if (!fileContent) {
       return [];
@@ -84,8 +95,11 @@ async function readDb(): Promise<Ticket[]> {
 }
 
 async function writeDb(tickets: Ticket[]): Promise<void> {
+  const dbPath = await getResolvedDbPath();
+  if (!dbPath) {
+    throw new Error("Database path is not configured. Please set it in the settings.");
+  }
   try {
-    const dbPath = await getResolvedDbPath();
     await fs.mkdir(path.dirname(dbPath), { recursive: true });
     await fs.writeFile(dbPath, JSON.stringify(tickets, null, 2), 'utf-8');
   } catch (error) {
@@ -106,7 +120,7 @@ export async function getTicket(id: string): Promise<Ticket | null> {
 const defaultTicket = (width: number, height: number): Ticket => ({
   id: nanoid(),
   name: 'Untitled Ticket',
-  backgroundImageUrl: '/Ticket Template 2.png',
+  backgroundImageUrl: '/Ticket.png',
   texts: [],
   canvasWidth: width,
   canvasHeight: height,
