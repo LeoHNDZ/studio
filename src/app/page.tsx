@@ -188,7 +188,7 @@ export default function DashboardPage() {
                           id="db-path"
                           value={newDbPath}
                           onChange={(e) => setNewDbPath(e.target.value)}
-                          placeholder="C:\TicketMakerDatabase\database.json"
+                          placeholder="e.g. C:\Users\User\Documents\tickets.json"
                       />
                        <p className="text-sm text-muted-foreground">
                           Enter an absolute path on your PC to save the database file. The file will be created automatically if it doesn't exist.

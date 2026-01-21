@@ -3,6 +3,7 @@
 
 import fs from 'fs/promises';
 import path from 'path';
+import os from 'os';
 import type { Ticket } from './types';
 import { revalidatePath } from 'next/cache';
 import { nanoid } from 'nanoid';
@@ -21,7 +22,8 @@ async function readConfig(): Promise<AppConfig> {
         return JSON.parse(fileContent) as AppConfig;
     } catch (error) {
         if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-             const defaultConfig = { dbPath: 'C:\\TicketMakerDatabase\\database.json' };
+             const defaultDbPath = path.join(os.homedir(), 'TicketMakerDatabase', 'database.json');
+             const defaultConfig = { dbPath: defaultDbPath };
             await writeConfig(defaultConfig);
             return defaultConfig;
         }
@@ -50,18 +52,7 @@ export async function updateDbPath(newPath: string): Promise<{success: boolean, 
       const config = await readConfig();
       config.dbPath = newPath;
       await writeConfig(config);
-
-      if (newPath) {
-        const resolvedNewPath = path.resolve(newPath);
-        try {
-          await fs.access(resolvedNewPath);
-        } catch (e) {
-          // File doesn't exist, create it.
-          await fs.mkdir(path.dirname(resolvedNewPath), { recursive: true });
-          await fs.writeFile(resolvedNewPath, '[]', 'utf-8');
-        }
-      }
-
+      
       revalidatePath('/');
       return { success: true };
     } catch(e: any) {
