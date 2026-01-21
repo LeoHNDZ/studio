@@ -54,9 +54,6 @@ export default function DashboardPage() {
     getDbPath().then(path => {
       setDbPath(path);
       setNewDbPath(path || 'db/tickets.json');
-      if (!path) {
-        setIsSettingsOpen(true);
-      }
     });
   }, []);
 
@@ -135,7 +132,7 @@ export default function DashboardPage() {
         <div className="container mx-auto flex justify-between items-center">
           <h1 className="text-2xl font-bold">TicketMaker</h1>
           <div className="flex items-center gap-2">
-            <Button onClick={createNewTicket}>
+            <Button onClick={createNewTicket} disabled={!dbPath}>
               <Plus className="mr-2 h-4 w-4" />
               New Ticket
             </Button>
@@ -195,9 +192,13 @@ export default function DashboardPage() {
         ) : (
             <div className="text-center py-16">
                 <h2 className="text-xl font-semibold">No Database Selected</h2>
-                <p className="text-muted-foreground mt-2">
-                    Click the settings icon <Cog className="inline h-4 w-4" /> to create or select a database file.
+                <p className="text-muted-foreground mt-2 mb-4">
+                    Create a new database or select an existing one to get started.
                 </p>
+                <Button onClick={() => setIsSettingsOpen(true)}>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Create or Add Database
+                </Button>
             </div>
         )}
       </main>
