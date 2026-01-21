@@ -21,7 +21,9 @@ async function readConfig(): Promise<AppConfig> {
         return JSON.parse(fileContent) as AppConfig;
     } catch (error) {
         if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-            return { dbPath: '' };
+             const defaultConfig = { dbPath: '' };
+            await writeConfig(defaultConfig);
+            return defaultConfig;
         }
         throw error;
     }
@@ -74,6 +76,23 @@ async function getResolvedDbPath(): Promise<string> {
         return '';
     }
     return path.resolve(configuredPath);
+}
+
+export async function getDbContent(): Promise<string> {
+    const dbPath = await getResolvedDbPath();
+    if (!dbPath) {
+        return '[]'; // Return empty array as string if no db is set
+    }
+    try {
+        const fileContent = await fs.readFile(dbPath, 'utf-8');
+        return fileContent;
+    } catch (error) {
+        if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+            return '[]'; // File doesn't exist, return empty array
+        }
+        console.error("Error reading from DB for download:", error);
+        throw error;
+    }
 }
 
 async function readDb(): Promise<Ticket[]> {

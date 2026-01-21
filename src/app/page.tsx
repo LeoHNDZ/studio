@@ -4,10 +4,10 @@
 import * as React from 'react';
 import type { Ticket } from '@/lib/types';
 import { Button } from '@/components/ui/button';
-import { Plus, Cog } from 'lucide-react';
+import { Plus, Cog, Download } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { TicketList } from '@/components/ticket-list';
-import { createTicket, deleteTicket, deleteTickets, getTickets, getDbPath, updateDbPath } from '@/lib/actions';
+import { createTicket, deleteTicket, deleteTickets, getTickets, getDbPath, updateDbPath, getDbContent } from '@/lib/actions';
 import {
   Dialog,
   DialogContent,
@@ -53,15 +53,17 @@ export default function DashboardPage() {
   React.useEffect(() => {
     getDbPath().then(path => {
       setDbPath(path);
-      setNewDbPath(path || 'db/tickets.json');
+      setNewDbPath(path || '');
     });
   }, []);
 
   React.useEffect(() => {
-    if (dbPath) {
-      fetchTickets();
-    } else {
-      setTickets([]);
+    if (dbPath !== null) {
+        if (dbPath) {
+            fetchTickets();
+        } else {
+            setTickets([]);
+        }
     }
   }, [dbPath, fetchTickets]);
 
@@ -73,13 +75,41 @@ export default function DashboardPage() {
         setIsSettingsOpen(false);
         toast({
             title: 'Settings saved',
-            description: `Database path set to ${newDbPath}`,
+            description: newDbPath ? `Database path set to ${newDbPath}` : 'Database path cleared.',
         });
     } else {
         toast({
             variant: 'destructive',
             title: 'Error saving settings',
             description: result.error || 'An unknown error occurred.',
+        });
+    }
+  };
+  
+  const handleDownloadBackup = async () => {
+    try {
+        const content = await getDbContent();
+        const blob = new Blob([content], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        const currentPath = dbPath || 'tickets.json';
+        const fileName = currentPath.split(/[\\/]/).pop() || 'tickets.json';
+        link.download = fileName;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+        toast({
+            title: 'Backup downloaded',
+            description: `Saved as ${fileName}`,
+        });
+    } catch (error) {
+        console.error("Failed to download backup", error);
+        toast({
+            variant: "destructive",
+            title: "Download failed",
+            description: "Could not download the database backup.",
         });
     }
   };
@@ -140,7 +170,7 @@ export default function DashboardPage() {
               setIsSettingsOpen(isOpen);
               // Reset input field to current path when dialog is closed without saving
               if (!isOpen) {
-                setNewDbPath(dbPath || 'db/tickets.json');
+                setNewDbPath(dbPath || '');
               }
             }}>
               <DialogTrigger asChild>
@@ -165,6 +195,10 @@ export default function DashboardPage() {
                       </p>
                   </div>
                   <DialogFooter>
+                      <Button variant="outline" onClick={handleDownloadBackup} disabled={!dbPath} className="mr-auto">
+                        <Download className="mr-2 h-4 w-4" />
+                        Download Backup
+                      </Button>
                       <DialogClose asChild>
                           <Button variant="ghost">Cancel</Button>
                       </DialogClose>
