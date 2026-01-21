@@ -21,7 +21,7 @@ async function readConfig(): Promise<AppConfig> {
         return JSON.parse(fileContent) as AppConfig;
     } catch (error) {
         if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-             const defaultConfig = { dbPath: '' };
+             const defaultConfig = { dbPath: 'C:\\TicketMakerDatabase\\database.json' };
             await writeConfig(defaultConfig);
             return defaultConfig;
         }

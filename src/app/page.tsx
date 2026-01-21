@@ -180,7 +180,7 @@ export default function DashboardPage() {
               </DialogTrigger>
               <DialogContent>
                   <DialogHeader>
-                      <DialogTitle>{dbPath ? 'Settings' : 'Welcome! Create or Select a Database'}</DialogTitle>
+                      <DialogTitle>Settings</DialogTitle>
                   </DialogHeader>
                   <div className="space-y-2">
                       <Label htmlFor="db-path">Database File Path</Label>
@@ -188,10 +188,10 @@ export default function DashboardPage() {
                           id="db-path"
                           value={newDbPath}
                           onChange={(e) => setNewDbPath(e.target.value)}
-                          placeholder="e.g., db/tickets.json"
+                          placeholder="C:\TicketMakerDatabase\database.json"
                       />
                        <p className="text-sm text-muted-foreground">
-                          Enter a path to create a new database or select an existing one. Path is relative to the project root.
+                          Enter an absolute path on your PC to save the database file. The file will be created automatically if it doesn't exist.
                       </p>
                   </div>
                   <DialogFooter>
