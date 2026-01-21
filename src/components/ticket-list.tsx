@@ -32,6 +32,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from './ui/dropdown-menu';
+import { Checkbox } from './ui/checkbox';
 
 type SortKey = 'name' | 'createdAt';
 type SortDirection = 'asc' | 'desc';
@@ -39,12 +40,14 @@ type SortDirection = 'asc' | 'desc';
 interface TicketListProps {
   tickets: Ticket[];
   onDelete: (id: string) => void;
+  onDeleteMultiple: (ids: string[]) => void;
 }
 
-export function TicketList({ tickets, onDelete }: TicketListProps) {
+export function TicketList({ tickets, onDelete, onDeleteMultiple }: TicketListProps) {
   const [searchTerm, setSearchTerm] = React.useState('');
   const [sortKey, setSortKey] = React.useState<SortKey>('createdAt');
   const [sortDirection, setSortDirection] = React.useState<SortDirection>('desc');
+  const [selectedTicketIds, setSelectedTicketIds] = React.useState<string[]>([]);
 
   const sortedAndFilteredTickets = React.useMemo(() => {
     return tickets
@@ -72,6 +75,32 @@ export function TicketList({ tickets, onDelete }: TicketListProps) {
     }
   };
 
+  React.useEffect(() => {
+    setSelectedTicketIds([]);
+  }, [searchTerm, sortKey, sortDirection]);
+
+
+  const handleSelectTicket = (ticketId: string, isSelected: boolean) => {
+    if (isSelected) {
+      setSelectedTicketIds(prev => [...prev, ticketId]);
+    } else {
+      setSelectedTicketIds(prev => prev.filter(id => id !== ticketId));
+    }
+  };
+
+  const handleSelectAll = (isSelected: boolean) => {
+    if (isSelected) {
+      setSelectedTicketIds(sortedAndFilteredTickets.map(t => t.id));
+    } else {
+      setSelectedTicketIds([]);
+    }
+  };
+
+  const handleDeleteSelected = () => {
+    onDeleteMultiple(selectedTicketIds);
+    setSelectedTicketIds([]);
+  };
+
   if (tickets.length === 0) {
     return (
       <div className="text-center py-16">
@@ -80,6 +109,9 @@ export function TicketList({ tickets, onDelete }: TicketListProps) {
       </div>
     );
   }
+
+  const numSelected = selectedTicketIds.length;
+  const numTickets = sortedAndFilteredTickets.length;
 
   return (
     <div className="space-y-4">
@@ -90,23 +122,54 @@ export function TicketList({ tickets, onDelete }: TicketListProps) {
                 onChange={e => setSearchTerm(e.target.value)}
                 className="max-w-sm bg-card/50 backdrop-blur-sm"
             />
-            <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                    <Button variant="outline">
-                        Sort by: {sortKey === 'name' ? 'Name' : 'Date'} ({sortDirection === 'asc' ? 'Asc' : 'Desc'})
-                        <ArrowUpDown className="ml-2 h-4 w-4" />
-                    </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => handleSort('name')}>Name</DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => handleSort('createdAt')}>Date</DropdownMenuItem>
-                </DropdownMenuContent>
-            </DropdownMenu>
+            <div className="flex items-center gap-2">
+                 {numSelected > 0 && (
+                     <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                            <Button variant="destructive">
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Delete ({numSelected})
+                            </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                            <AlertDialogHeader>
+                                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                    This will permanently delete {numSelected} ticket(s). This action cannot be undone.
+                                </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={handleDeleteSelected}>Delete</AlertDialogAction>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
+                )}
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button variant="outline">
+                            Sort by: {sortKey === 'name' ? 'Name' : 'Date'} ({sortDirection === 'asc' ? 'Asc' : 'Desc'})
+                            <ArrowUpDown className="ml-2 h-4 w-4" />
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => handleSort('name')}>Name</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleSort('createdAt')}>Date</DropdownMenuItem>
+                    </DropdownMenuContent>
+                </DropdownMenu>
+            </div>
         </div>
         <div className="border rounded-lg bg-card/50 backdrop-blur-sm">
         <Table>
             <TableHeader>
                 <TableRow>
+                    <TableHead className="w-[50px]">
+                       <Checkbox
+                            checked={numTickets > 0 && numSelected === numTickets}
+                            onCheckedChange={(checked) => handleSelectAll(Boolean(checked))}
+                            aria-label="Select all"
+                        />
+                    </TableHead>
                     <TableHead>Name</TableHead>
                     <TableHead>Elements</TableHead>
                     <TableHead
@@ -123,7 +186,14 @@ export function TicketList({ tickets, onDelete }: TicketListProps) {
             </TableHeader>
             <TableBody>
                 {sortedAndFilteredTickets.map(ticket => (
-                    <TableRow key={ticket.id} className="border-border/50">
+                    <TableRow key={ticket.id} className="border-border/50" data-state={selectedTicketIds.includes(ticket.id) ? 'selected' : ''}>
+                        <TableCell>
+                            <Checkbox
+                                checked={selectedTicketIds.includes(ticket.id)}
+                                onCheckedChange={(checked) => handleSelectTicket(ticket.id, Boolean(checked))}
+                                aria-label={`Select ticket ${ticket.name}`}
+                            />
+                        </TableCell>
                         <TableCell className="font-medium">{ticket.name}</TableCell>
                         <TableCell>{ticket.texts.length}</TableCell>
                         <TableCell>{new Date(ticket.createdAt).toLocaleDateString()}</TableCell>
@@ -170,5 +240,4 @@ export function TicketList({ tickets, onDelete }: TicketListProps) {
     </div>
   );
 }
-
     

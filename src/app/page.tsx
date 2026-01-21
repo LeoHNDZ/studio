@@ -12,7 +12,7 @@ import { TicketList } from '@/components/ticket-list';
 const defaultTicket = (width: number, height: number): Ticket => ({
   id: nanoid(),
   name: 'Untitled Ticket',
-  backgroundImageUrl: '/Ticket.png',
+  backgroundImageUrl: '/Ticket Template 2.png',
   texts: [],
   canvasWidth: width,
   canvasHeight: height,
@@ -65,6 +65,12 @@ export default function DashboardPage() {
     localStorage.setItem('tickets', JSON.stringify(updatedTickets));
     setTickets(updatedTickets);
   };
+
+  const deleteTickets = (ids: string[]) => {
+    const updatedTickets = tickets.filter(t => !ids.includes(t.id));
+    localStorage.setItem('tickets', JSON.stringify(updatedTickets));
+    setTickets(updatedTickets);
+  };
   
   const updateTicket = (id: string, updates: Partial<Ticket>) => {
     const updatedTickets = tickets.map(t => t.id === id ? {...t, ...updates} : t);
@@ -88,6 +94,7 @@ export default function DashboardPage() {
         <TicketList 
             tickets={tickets} 
             onDelete={deleteTicket}
+            onDeleteMultiple={deleteTickets}
         />
       </main>
     </div>
