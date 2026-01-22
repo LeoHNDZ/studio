@@ -16,5 +16,14 @@
     "canvasWidth": 2550,
     "canvasHeight": 3300,
     "createdAt": 1769031689485
+  },
+  {
+    "id": "vT18rA8mE3exkFrzj5GEy",
+    "name": "Untitled Ticket",
+    "backgroundImageUrl": "/Ticket.png",
+    "texts": [],
+    "canvasWidth": 2550,
+    "canvasHeight": 3300,
+    "createdAt": 1769031995593
   }
 ]

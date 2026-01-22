@@ -217,19 +217,36 @@ export default function EditPageClient({ compositionId, initialTicket }: EditPag
 
         const dataUrl = canvas.toDataURL('image/png');
         const iframe = document.createElement('iframe');
-        iframe.style.position = 'fixed';
+        iframe.style.position = 'absolute';
         iframe.style.width = '0';
         iframe.style.height = '0';
+        iframe.style.left = '-9999px';
+        iframe.style.top = '-9999px';
         iframe.style.border = 'none';
+        
+        let cleanedUp = false;
+        const cleanup = () => {
+            if (cleanedUp) return;
+            cleanedUp = true;
+            window.removeEventListener('afterprint', cleanup);
+            if (document.body.contains(iframe)) {
+                document.body.removeChild(iframe);
+            }
+            if (wasSelected) {
+                setSelectedTextId(wasSelected);
+            }
+        };
+
+        window.addEventListener('afterprint', cleanup);
+        // Fallback cleanup
+        setTimeout(cleanup, 3000); 
+
         document.body.appendChild(iframe);
 
         const doc = iframe.contentWindow?.document;
         if (!doc) {
-            if (document.body.contains(iframe)) {
-                document.body.removeChild(iframe);
-            }
             toast({ title: 'Error', description: 'Could not print.', variant: 'destructive' });
-            if(wasSelected) setSelectedTextId(wasSelected);
+            cleanup();
             return;
         }
 
@@ -239,44 +256,40 @@ export default function EditPageClient({ compositionId, initialTicket }: EditPag
                 <head>
                   <title>Print</title>
                   <style>
-                    @page { margin: 0; }
-                    body { margin: 0; }
+                    @page { size: auto; margin: 0; }
+                    body { margin: 0; padding: 0; }
+                    img { max-width: 100%; }
                   </style>
                 </head>
-                <body style="margin: 0; padding: 0;">
-                    <img src="${dataUrl}" onload="window.print()" style="background: transparent; max-width: 100%;"/>
+                <body>
+                    <img />
                 </body>
             </html>
         `);
-        doc.close();
-
-        let printed = false;
-        const printAndCleanup = () => {
-            if (printed) return;
-            printed = true;
-            
-            // Cleanup
-            if (wasSelected) {
-                setSelectedTextId(wasSelected);
-            }
-             if (document.body.contains(iframe)) {
-                document.body.removeChild(iframe);
-            }
-        };
-
-        const handleAfterPrint = () => {
-            printAndCleanup();
-            window.removeEventListener('afterprint', handleAfterPrint);
-        };
         
-        window.addEventListener('afterprint', handleAfterPrint);
-
-        // Fallback timeout in case afterprint doesn't fire
-        setTimeout(() => {
-            if (!printed) {
-                printAndCleanup();
-            }
-        }, 2000);
+        const img = doc.querySelector('img');
+        if (img) {
+            img.onload = () => {
+                try {
+                    iframe.contentWindow?.focus();
+                    iframe.contentWindow?.print();
+                } catch (e) {
+                    console.error("Print failed", e);
+                    toast({ title: 'Error', description: 'Printing failed.', variant: 'destructive' });
+                    cleanup();
+                }
+            };
+            img.onerror = () => {
+                toast({ title: 'Error', description: 'Image for printing could not be loaded.', variant: 'destructive' });
+                cleanup();
+            };
+            img.src = dataUrl; // Set src last to ensure handlers are attached
+        } else {
+             toast({ title: 'Error', description: 'Could not create image for printing.', variant: 'destructive' });
+             cleanup();
+        }
+        
+        doc.close();
 
     }, 100);
 };
@@ -392,3 +405,5 @@ export default function EditPageClient({ compositionId, initialTicket }: EditPag
     </>
   );
 }
+
+    
