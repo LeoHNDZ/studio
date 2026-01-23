@@ -2,7 +2,7 @@
 "use client";
 
 import * as React from 'react';
-import type { Ticket } from '@/lib/types';
+import type { Ticket, Contact } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Plus, Cog, Download } from 'lucide-react';
 import { useRouter } from 'next/navigation';
@@ -24,6 +24,7 @@ import { useToast } from '@/hooks/use-toast';
 
 export default function DashboardPage() {
   const [tickets, setTickets] = React.useState<Ticket[]>([]);
+  const [contacts, setContacts] = React.useState<Contact[]>([]);
   const router = useRouter();
   const { toast } = useToast();
 
@@ -49,6 +50,37 @@ export default function DashboardPage() {
       setTickets([]); // Clear tickets on error
     }
   }, [toast]);
+
+  // Load contacts from localStorage
+  React.useEffect(() => {
+    try {
+      const savedContacts = localStorage.getItem('contacts');
+      if (savedContacts) {
+        const parsedContacts = JSON.parse(savedContacts);
+        // Migration for old contact format
+        const migratedContacts = parsedContacts.map((c: any) => {
+          if (typeof c.details !== 'undefined') {
+            return {
+              id: c.id,
+              name: c.name,
+              phone: '',
+              email: '',
+              address: c.details,
+            };
+          }
+          return {
+            ...c,
+            phone: c.phone || '',
+            email: c.email || '',
+            address: c.address || '',
+          };
+        });
+        setContacts(migratedContacts);
+      }
+    } catch (error) {
+      console.error("Failed to load contacts from localStorage", error);
+    }
+  }, []);
 
   React.useEffect(() => {
     getDbPath().then(path => {
@@ -213,6 +245,7 @@ export default function DashboardPage() {
         {dbPath ? (
             <TicketList 
                 tickets={tickets} 
+                contacts={contacts}
                 onDelete={handleDeleteTicket}
                 onDeleteMultiple={handleDeleteTickets}
             />

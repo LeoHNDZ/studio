@@ -2,7 +2,7 @@
 "use client";
 
 import * as React from 'react';
-import type { Ticket } from '@/lib/types';
+import type { Ticket, Contact } from '@/lib/types';
 import Link from 'next/link';
 import { Button } from './ui/button';
 import { Trash2, Edit, ArrowUpDown } from 'lucide-react';
@@ -34,27 +34,40 @@ import {
 } from './ui/dropdown-menu';
 import { Checkbox } from './ui/checkbox';
 
-type SortKey = 'name' | 'createdAt';
+type SortKey = 'name' | 'createdAt' | 'contactName';
 type SortDirection = 'asc' | 'desc';
 
 interface TicketListProps {
   tickets: Ticket[];
+  contacts: Contact[];
   onDelete: (id: string) => void;
   onDeleteMultiple: (ids: string[]) => void;
 }
 
-export function TicketList({ tickets, onDelete, onDeleteMultiple }: TicketListProps) {
+export function TicketList({ tickets, contacts, onDelete, onDeleteMultiple }: TicketListProps) {
   const [searchTerm, setSearchTerm] = React.useState('');
   const [sortKey, setSortKey] = React.useState<SortKey>('createdAt');
   const [sortDirection, setSortDirection] = React.useState<SortDirection>('desc');
   const [selectedTicketIds, setSelectedTicketIds] = React.useState<string[]>([]);
+  
+  const ticketsWithContact = React.useMemo(() => {
+    return tickets.map(ticket => {
+        const contact = contacts.find(c => c.id === ticket.contactId);
+        return { ...ticket, contactName: contact ? contact.name : '' };
+    });
+  }, [tickets, contacts]);
 
   const sortedAndFilteredTickets = React.useMemo(() => {
-    return tickets
-      .filter(ticket => ticket.name.toLowerCase().includes(searchTerm.toLowerCase()))
+    return ticketsWithContact
+      .filter(ticket => {
+          const searchTermLower = searchTerm.toLowerCase();
+          const ticketNameMatch = ticket.name.toLowerCase().includes(searchTermLower);
+          const contactNameMatch = ticket.contactName.toLowerCase().includes(searchTermLower);
+          return ticketNameMatch || contactNameMatch;
+      })
       .sort((a, b) => {
-        const aValue = a[sortKey];
-        const bValue = b[sortKey];
+        const aValue = a[sortKey] || '';
+        const bValue = b[sortKey] || '';
 
         if (aValue < bValue) {
           return sortDirection === 'asc' ? -1 : 1;
@@ -64,7 +77,7 @@ export function TicketList({ tickets, onDelete, onDeleteMultiple }: TicketListPr
         }
         return 0;
       });
-  }, [tickets, searchTerm, sortKey, sortDirection]);
+  }, [ticketsWithContact, searchTerm, sortKey, sortDirection]);
 
   const handleSort = (key: SortKey) => {
     if (sortKey === key) {
@@ -113,11 +126,18 @@ export function TicketList({ tickets, onDelete, onDeleteMultiple }: TicketListPr
   const numSelected = selectedTicketIds.length;
   const numTickets = sortedAndFilteredTickets.length;
 
+  const getSortDisplayName = () => {
+    if (sortKey === 'name') return 'Name';
+    if (sortKey === 'createdAt') return 'Date';
+    if (sortKey === 'contactName') return 'Contact';
+    return '';
+  }
+
   return (
     <div className="space-y-4">
         <div className="flex justify-between items-center gap-4">
             <Input 
-                placeholder="Search tickets..."
+                placeholder="Search tickets by name or contact..."
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
                 className="max-w-sm bg-card/50 backdrop-blur-sm"
@@ -148,12 +168,13 @@ export function TicketList({ tickets, onDelete, onDeleteMultiple }: TicketListPr
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                         <Button variant="outline">
-                            Sort by: {sortKey === 'name' ? 'Name' : 'Date'} ({sortDirection === 'asc' ? 'Asc' : 'Desc'})
+                            Sort by: {getSortDisplayName()} ({sortDirection === 'asc' ? 'Asc' : 'Desc'})
                             <ArrowUpDown className="ml-2 h-4 w-4" />
                         </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                         <DropdownMenuItem onClick={() => handleSort('name')}>Name</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleSort('contactName')}>Contact</DropdownMenuItem>
                         <DropdownMenuItem onClick={() => handleSort('createdAt')}>Date</DropdownMenuItem>
                     </DropdownMenuContent>
                 </DropdownMenu>
@@ -170,8 +191,24 @@ export function TicketList({ tickets, onDelete, onDeleteMultiple }: TicketListPr
                             aria-label="Select all"
                         />
                     </TableHead>
-                    <TableHead>Name</TableHead>
+                    <TableHead
+                        className="cursor-pointer hover:bg-muted/50"
+                        onClick={() => handleSort('name')}>
+                         <div className='flex items-center'>
+                           Name
+                           {sortKey === 'name' && <ArrowUpDown className="ml-2 h-4 w-4" />}
+                         </div>
+                    </TableHead>
                     <TableHead>Elements</TableHead>
+                    <TableHead
+                        className="cursor-pointer hover:bg-muted/50"
+                        onClick={() => handleSort('contactName')}
+                    >
+                       <div className='flex items-center'>
+                         Contact
+                         {sortKey === 'contactName' && <ArrowUpDown className="ml-2 h-4 w-4" />}
+                       </div>
+                    </TableHead>
                     <TableHead
                         className="cursor-pointer hover:bg-muted/50"
                         onClick={() => handleSort('createdAt')}
@@ -196,6 +233,7 @@ export function TicketList({ tickets, onDelete, onDeleteMultiple }: TicketListPr
                         </TableCell>
                         <TableCell className="font-medium">{ticket.name}</TableCell>
                         <TableCell>{ticket.texts.length}</TableCell>
+                        <TableCell>{ticket.contactName || 'N/A'}</TableCell>
                         <TableCell>{new Date(ticket.createdAt).toLocaleDateString()}</TableCell>
                         <TableCell className="text-right">
                              <div className='flex items-center justify-end gap-2'>
@@ -240,4 +278,3 @@ export function TicketList({ tickets, onDelete, onDeleteMultiple }: TicketListPr
     </div>
   );
 }
-    
