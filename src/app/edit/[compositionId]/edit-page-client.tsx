@@ -117,7 +117,7 @@ export default function EditPageClient({ compositionId, initialTicket }: EditPag
     try {
       localStorage.setItem('contacts', JSON.stringify(updatedContacts));
       setContacts(updatedContacts);
-    } catch (error)
+    } catch (error) {
       console.error("Failed to save contacts to localStorage", error);
     }
   };
