@@ -34,7 +34,7 @@ import {
 } from './ui/dropdown-menu';
 import { Checkbox } from './ui/checkbox';
 
-type SortKey = 'name' | 'createdAt' | 'contactName' | 'dueDate';
+type SortKey = 'name' | 'createdAt' | 'contactName' | 'dueDateStart';
 type SortDirection = 'asc' | 'desc';
 
 interface TicketListProps {
@@ -66,9 +66,9 @@ export function TicketList({ tickets, contacts, onDelete, onDeleteMultiple }: Ti
           return ticketNameMatch || contactNameMatch;
       })
       .sort((a, b) => {
-        if (sortKey === 'dueDate') {
-            const aDate = a.dueDate;
-            const bDate = b.dueDate;
+        if (sortKey === 'dueDateStart') {
+            const aDate = a.dueDateStart;
+            const bDate = b.dueDateStart;
 
             if (aDate === bDate) return 0;
             if (aDate === null || aDate === undefined) return 1;
@@ -145,7 +145,7 @@ export function TicketList({ tickets, contacts, onDelete, onDeleteMultiple }: Ti
     if (sortKey === 'name') return 'Name';
     if (sortKey === 'createdAt') return 'Date';
     if (sortKey === 'contactName') return 'Contact';
-    if (sortKey === 'dueDate') return 'Due Date';
+    if (sortKey === 'dueDateStart') return 'Timeframe';
     return '';
   }
 
@@ -192,7 +192,7 @@ export function TicketList({ tickets, contacts, onDelete, onDeleteMultiple }: Ti
                         <DropdownMenuItem onClick={() => handleSort('name')}>Name</DropdownMenuItem>
                         <DropdownMenuItem onClick={() => handleSort('contactName')}>Contact</DropdownMenuItem>
                         <DropdownMenuItem onClick={() => handleSort('createdAt')}>Date</DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleSort('dueDate')}>Due Date</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleSort('dueDateStart')}>Timeframe</DropdownMenuItem>
                     </DropdownMenuContent>
                 </DropdownMenu>
             </div>
@@ -228,11 +228,11 @@ export function TicketList({ tickets, contacts, onDelete, onDeleteMultiple }: Ti
                     </TableHead>
                     <TableHead
                         className="cursor-pointer hover:bg-muted/50"
-                        onClick={() => handleSort('dueDate')}
+                        onClick={() => handleSort('dueDateStart')}
                     >
                        <div className='flex items-center'>
-                         Due Date
-                         {sortKey === 'dueDate' && <ArrowUpDown className="ml-2 h-4 w-4" />}
+                         Timeframe
+                         {sortKey === 'dueDateStart' && <ArrowUpDown className="ml-2 h-4 w-4" />}
                        </div>
                     </TableHead>
                     <TableHead
@@ -260,7 +260,14 @@ export function TicketList({ tickets, contacts, onDelete, onDeleteMultiple }: Ti
                         <TableCell className="font-medium">{ticket.name}</TableCell>
                         <TableCell>{ticket.texts.length}</TableCell>
                         <TableCell>{ticket.contactName || 'N/A'}</TableCell>
-                        <TableCell>{ticket.dueDate ? new Date(ticket.dueDate).toLocaleString([], { year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute:'2-digit' }) : 'N/A'}</TableCell>
+                        <TableCell>
+                          {ticket.dueDateStart ? (
+                              <>
+                              <span>{new Date(ticket.dueDateStart).toLocaleString([], { year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute:'2-digit' })}</span>
+                              {ticket.dueDateEnd && <><br/><span>to {new Date(ticket.dueDateEnd).toLocaleString([], { year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute:'2-digit' })}</span></>}
+                              </>
+                          ) : 'N/A'}
+                        </TableCell>
                         <TableCell>{new Date(ticket.createdAt).toLocaleDateString()}</TableCell>
                         <TableCell className="text-right">
                              <div className='flex items-center justify-end gap-2'>
@@ -305,5 +312,3 @@ export function TicketList({ tickets, contacts, onDelete, onDeleteMultiple }: Ti
     </div>
   );
 }
-
-    

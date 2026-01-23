@@ -180,7 +180,7 @@ export function ComposerControls({
                   </Select>
               </div>
               <div className="space-y-2">
-                <Label>Due Date & Time</Label>
+                <Label>Start Date & Time</Label>
                 <div className="space-y-2">
                     <Popover>
                         <PopoverTrigger asChild>
@@ -188,32 +188,32 @@ export function ComposerControls({
                                 variant={"outline"}
                                 className={cn(
                                     "w-full justify-start text-left font-normal bg-background/50",
-                                    !activeTicket.dueDate && "text-muted-foreground"
+                                    !activeTicket.dueDateStart && "text-muted-foreground"
                                 )}
                             >
                                 <CalendarIcon className="mr-2 h-4 w-4" />
-                                {activeTicket.dueDate ? format(new Date(activeTicket.dueDate), "PPP") : <span>Pick a date</span>}
+                                {activeTicket.dueDateStart ? format(new Date(activeTicket.dueDateStart), "PPP") : <span>Pick a date</span>}
                             </Button>
                         </PopoverTrigger>
                         <PopoverContent className="w-auto p-0" align="start">
                             <Calendar
                                 mode="single"
-                                selected={activeTicket.dueDate ? new Date(activeTicket.dueDate) : undefined}
+                                selected={activeTicket.dueDateStart ? new Date(activeTicket.dueDateStart) : undefined}
                                 onSelect={(date) => {
                                     if (!date) {
-                                        onUpdateActiveTicket({ dueDate: null });
+                                        onUpdateActiveTicket({ dueDateStart: null });
                                         return;
                                     }
                                     let hours = 0;
                                     let minutes = 0;
-                                    if(activeTicket.dueDate) {
-                                        const currentDueDate = new Date(activeTicket.dueDate);
+                                    if(activeTicket.dueDateStart) {
+                                        const currentDueDate = new Date(activeTicket.dueDateStart);
                                         hours = currentDueDate.getHours();
                                         minutes = currentDueDate.getMinutes();
                                     }
                                     
                                     date.setHours(hours, minutes, 0, 0);
-                                    onUpdateActiveTicket({ dueDate: date.getTime() });
+                                    onUpdateActiveTicket({ dueDateStart: date.getTime() });
                                 }}
                                 initialFocus
                             />
@@ -222,18 +222,76 @@ export function ComposerControls({
                     <Input
                         type="time"
                         className="w-full bg-background/50"
-                        value={activeTicket.dueDate ? format(new Date(activeTicket.dueDate), 'HH:mm') : ''}
+                        value={activeTicket.dueDateStart ? format(new Date(activeTicket.dueDateStart), 'HH:mm') : ''}
                         onChange={(e) => {
                             const time = e.target.value;
-                            if (!activeTicket.dueDate || !time) return;
+                            if (!activeTicket.dueDateStart || !time) return;
 
                             const [hours, minutes] = time.split(':').map(Number);
-                            const newDate = new Date(activeTicket.dueDate);
+                            const newDate = new Date(activeTicket.dueDateStart);
                             newDate.setHours(hours);
                             newDate.setMinutes(minutes);
-                            onUpdateActiveTicket({ dueDate: newDate.getTime() });
+                            onUpdateActiveTicket({ dueDateStart: newDate.getTime() });
                         }}
-                        disabled={!activeTicket.dueDate}
+                        disabled={!activeTicket.dueDateStart}
+                    />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>End Date & Time</Label>
+                <div className="space-y-2">
+                    <Popover>
+                        <PopoverTrigger asChild>
+                            <Button
+                                variant={"outline"}
+                                className={cn(
+                                    "w-full justify-start text-left font-normal bg-background/50",
+                                    !activeTicket.dueDateEnd && "text-muted-foreground"
+                                )}
+                            >
+                                <CalendarIcon className="mr-2 h-4 w-4" />
+                                {activeTicket.dueDateEnd ? format(new Date(activeTicket.dueDateEnd), "PPP") : <span>Pick a date</span>}
+                            </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                            <Calendar
+                                mode="single"
+                                selected={activeTicket.dueDateEnd ? new Date(activeTicket.dueDateEnd) : undefined}
+                                onSelect={(date) => {
+                                    if (!date) {
+                                        onUpdateActiveTicket({ dueDateEnd: null });
+                                        return;
+                                    }
+                                    let hours = 0;
+                                    let minutes = 0;
+                                    if(activeTicket.dueDateEnd) {
+                                        const currentDueDate = new Date(activeTicket.dueDateEnd);
+                                        hours = currentDueDate.getHours();
+                                        minutes = currentDueDate.getMinutes();
+                                    }
+                                    
+                                    date.setHours(hours, minutes, 0, 0);
+                                    onUpdateActiveTicket({ dueDateEnd: date.getTime() });
+                                }}
+                                initialFocus
+                            />
+                        </PopoverContent>
+                    </Popover>
+                    <Input
+                        type="time"
+                        className="w-full bg-background/50"
+                        value={activeTicket.dueDateEnd ? format(new Date(activeTicket.dueDateEnd), 'HH:mm') : ''}
+                        onChange={(e) => {
+                            const time = e.target.value;
+                            if (!activeTicket.dueDateEnd || !time) return;
+
+                            const [hours, minutes] = time.split(':').map(Number);
+                            const newDate = new Date(activeTicket.dueDateEnd);
+                            newDate.setHours(hours);
+                            newDate.setMinutes(minutes);
+                            onUpdateActiveTicket({ dueDateEnd: newDate.getTime() });
+                        }}
+                        disabled={!activeTicket.dueDateEnd}
                     />
                 </div>
               </div>
@@ -437,5 +495,3 @@ export function ComposerControls({
     </Accordion>
   );
 }
-
-    
