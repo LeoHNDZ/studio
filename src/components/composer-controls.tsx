@@ -14,7 +14,6 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
   DialogFooter,
   DialogClose,
 } from '@/components/ui/dialog';
@@ -22,7 +21,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, Trash2, X, UserPlus, BookUser, Check, RefreshCcw, BrainCircuit } from 'lucide-react';
+import { Plus, Trash2, X, UserPlus, BookUser, Check, RefreshCcw, BrainCircuit, Edit } from 'lucide-react';
 import { Card, CardContent } from './ui/card';
 import { ScrollArea } from './ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
@@ -38,6 +37,7 @@ interface ComposerControlsProps {
   hasBackgroundImage: boolean;
   contacts: Contact[];
   onAddContact: (name: string, phone: string, email: string, address: string) => void;
+  onUpdateContact: (contact: Contact) => void;
   onDeleteContact: (id: string) => void;
   isAddingText: boolean;
   onAddContactText: (text: string) => void;
@@ -55,35 +55,63 @@ export function ComposerControls({
   hasBackgroundImage,
   contacts,
   onAddContact,
+  onUpdateContact,
   onDeleteContact,
   isAddingText,
   onAddContactText,
   activeTicket,
   onUpdateActiveTicket,
 }: ComposerControlsProps) {
-  const [newContactName, setNewContactName] = React.useState('');
-  const [newContactPhone, setNewContactPhone] = React.useState('');
-  const [newContactEmail, setNewContactEmail] = React.useState('');
-  const [newContactAddress, setNewContactAddress] = React.useState('');
   const [isContactDialogOpen, setIsContactDialogOpen] = React.useState(false);
+  const [editingContact, setEditingContact] = React.useState<Contact | null>(null);
+  const [contactForm, setContactForm] = React.useState({
+    name: '',
+    phone: '',
+    email: '',
+    address: '',
+  });
   const [quoteTopic, setQuoteTopic] = React.useState('');
   const [isSuggesting, setIsSuggesting] = React.useState(false);
   const { toast } = useToast();
 
-  const handleAddContact = () => {
-    if (newContactName.trim()) {
-      onAddContact(
-        newContactName.trim(),
-        newContactPhone.trim(),
-        newContactEmail.trim(),
-        newContactAddress.trim()
-      );
-      setNewContactName('');
-      setNewContactPhone('');
-      setNewContactEmail('');
-      setNewContactAddress('');
-      setIsContactDialogOpen(false);
+  const handleOpenAddDialog = () => {
+    setEditingContact(null);
+    setContactForm({ name: '', phone: '', email: '', address: '' });
+    setIsContactDialogOpen(true);
+  };
+
+  const handleOpenEditDialog = (contact: Contact) => {
+    setEditingContact(contact);
+    setContactForm({
+      name: contact.name,
+      phone: contact.phone,
+      email: contact.email,
+      address: contact.address,
+    });
+    setIsContactDialogOpen(true);
+  };
+
+  const handleSaveContact = () => {
+    if (!contactForm.name.trim()) {
+      toast({
+        variant: 'destructive',
+        title: 'Name is required',
+        description: 'Please enter a name for the contact.',
+      });
+      return;
     }
+
+    if (editingContact) {
+      onUpdateContact({ ...editingContact, ...contactForm });
+    } else {
+      onAddContact(
+        contactForm.name.trim(),
+        contactForm.phone.trim(),
+        contactForm.email.trim(),
+        contactForm.address.trim()
+      );
+    }
+    setIsContactDialogOpen(false);
   };
   
   const handleSuggestQuote = async () => {
@@ -196,52 +224,50 @@ export function ComposerControls({
       <AccordionItem value="item-4">
         <AccordionTrigger className="px-4">Contacts</AccordionTrigger>
         <AccordionContent className="px-4 space-y-4">
+          <Button className="w-full" variant="outline" onClick={handleOpenAddDialog}>
+            <UserPlus className="mr-2 h-4 w-4" /> Add Contact
+          </Button>
           <Dialog open={isContactDialogOpen} onOpenChange={setIsContactDialogOpen}>
-            <DialogTrigger asChild>
-              <Button className="w-full" variant="outline">
-                <UserPlus className="mr-2 h-4 w-4" /> Add Contact
-              </Button>
-            </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Add a new contact</DialogTitle>
+                <DialogTitle>{editingContact ? 'Edit Contact' : 'Add a new contact'}</DialogTitle>
               </DialogHeader>
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="new-contact-name">Name</Label>
+                  <Label htmlFor="contact-name">Name</Label>
                   <Input
-                    id="new-contact-name"
+                    id="contact-name"
                     placeholder="John Doe"
-                    value={newContactName}
-                    onChange={(e) => setNewContactName(e.target.value)}
+                    value={contactForm.name}
+                    onChange={(e) => setContactForm(prev => ({...prev, name: e.target.value}))}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="new-contact-phone">Phone Number</Label>
+                  <Label htmlFor="contact-phone">Phone Number</Label>
                   <Input
-                    id="new-contact-phone"
+                    id="contact-phone"
                     placeholder="e.g. 555-123-4567"
-                    value={newContactPhone}
-                    onChange={(e) => setNewContactPhone(e.target.value)}
+                    value={contactForm.phone}
+                    onChange={(e) => setContactForm(prev => ({...prev, phone: e.target.value}))}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="new-contact-email">Email</Label>
+                  <Label htmlFor="contact-email">Email</Label>
                   <Input
-                    id="new-contact-email"
+                    id="contact-email"
                     type="email"
                     placeholder="e.g. john@example.com"
-                    value={newContactEmail}
-                    onChange={(e) => setNewContactEmail(e.target.value)}
+                    value={contactForm.email}
+                    onChange={(e) => setContactForm(prev => ({...prev, email: e.target.value}))}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="new-contact-address">Address</Label>
+                  <Label htmlFor="contact-address">Address</Label>
                   <Textarea
-                    id="new-contact-address"
+                    id="contact-address"
                     placeholder="123 Main St..."
-                    value={newContactAddress}
-                    onChange={(e) => setNewContactAddress(e.target.value)}
+                    value={contactForm.address}
+                    onChange={(e) => setContactForm(prev => ({...prev, address: e.target.value}))}
                   />
                 </div>
               </div>
@@ -249,7 +275,7 @@ export function ComposerControls({
                   <DialogClose asChild>
                     <Button variant="ghost">Cancel</Button>
                   </DialogClose>
-                  <Button onClick={handleAddContact}>Save Contact</Button>
+                  <Button onClick={handleSaveContact}>Save Contact</Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
@@ -273,6 +299,9 @@ export function ComposerControls({
                         <div className='flex gap-1'>
                             <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => onAddContactText(`${contact.name}${contact.phone ? `\n${contact.phone}` : ''}`)}>
                                 <Plus className="h-4 w-4" />
+                            </Button>
+                             <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => handleOpenEditDialog(contact)}>
+                                <Edit className="h-4 w-4" />
                             </Button>
                             <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => onDeleteContact(contact.id)}>
                                 <Trash2 className="h-4 w-4" />

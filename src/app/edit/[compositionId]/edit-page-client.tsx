@@ -117,7 +117,7 @@ export default function EditPageClient({ compositionId, initialTicket }: EditPag
     try {
       localStorage.setItem('contacts', JSON.stringify(updatedContacts));
       setContacts(updatedContacts);
-    } catch (error) {
+    } catch (error)
       console.error("Failed to save contacts to localStorage", error);
     }
   };
@@ -125,6 +125,11 @@ export default function EditPageClient({ compositionId, initialTicket }: EditPag
   const addContact = (name: string, phone: string, email: string, address: string) => {
     const newContact: Contact = { id: nanoid(), name, phone, email, address };
     const updatedContacts = [...contacts, newContact];
+    saveContacts(updatedContacts);
+  };
+
+  const updateContact = (updatedContact: Contact) => {
+    const updatedContacts = contacts.map(c => (c.id === updatedContact.id ? updatedContact : c));
     saveContacts(updatedContacts);
   };
 
@@ -363,6 +368,7 @@ export default function EditPageClient({ compositionId, initialTicket }: EditPag
               hasBackgroundImage={!!ticket.backgroundImageUrl}
               contacts={contacts}
               onAddContact={addContact}
+              onUpdateContact={updateContact}
               onDeleteContact={deleteContact}
               isAddingText={!!pendingText}
               onAddContactText={addText}
