@@ -260,7 +260,7 @@ export function TicketList({ tickets, contacts, onDelete, onDeleteMultiple }: Ti
                         <TableCell className="font-medium">{ticket.name}</TableCell>
                         <TableCell>{ticket.texts.length}</TableCell>
                         <TableCell>{ticket.contactName || 'N/A'}</TableCell>
-                        <TableCell>{ticket.dueDate ? new Date(ticket.dueDate).toLocaleDateString() : 'N/A'}</TableCell>
+                        <TableCell>{ticket.dueDate ? new Date(ticket.dueDate).toLocaleString([], { year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute:'2-digit' }) : 'N/A'}</TableCell>
                         <TableCell>{new Date(ticket.createdAt).toLocaleDateString()}</TableCell>
                         <TableCell className="text-right">
                              <div className='flex items-center justify-end gap-2'>
@@ -305,3 +305,5 @@ export function TicketList({ tickets, contacts, onDelete, onDeleteMultiple }: Ti
     </div>
   );
 }
+
+    
