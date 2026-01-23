@@ -11,9 +11,11 @@ export type TextElement = {
 };
 
 export type Contact = {
-  id: string;
+  id:string;
   name: string;
-  details: string;
+  phone: string;
+  email: string;
+  address: string;
 };
 
 export type Ticket = {

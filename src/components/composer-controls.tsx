@@ -37,7 +37,7 @@ interface ComposerControlsProps {
   onDeleteText: (id: string) => void;
   hasBackgroundImage: boolean;
   contacts: Contact[];
-  onAddContact: (name: string, details: string) => void;
+  onAddContact: (name: string, phone: string, email: string, address: string) => void;
   onDeleteContact: (id: string) => void;
   isAddingText: boolean;
   onAddContactText: (text: string) => void;
@@ -62,17 +62,26 @@ export function ComposerControls({
   onUpdateActiveTicket,
 }: ComposerControlsProps) {
   const [newContactName, setNewContactName] = React.useState('');
-  const [newContactDetails, setNewContactDetails] = React.useState('');
+  const [newContactPhone, setNewContactPhone] = React.useState('');
+  const [newContactEmail, setNewContactEmail] = React.useState('');
+  const [newContactAddress, setNewContactAddress] = React.useState('');
   const [isContactDialogOpen, setIsContactDialogOpen] = React.useState(false);
   const [quoteTopic, setQuoteTopic] = React.useState('');
   const [isSuggesting, setIsSuggesting] = React.useState(false);
   const { toast } = useToast();
 
   const handleAddContact = () => {
-    if (newContactName.trim() && newContactDetails.trim()) {
-      onAddContact(newContactName.trim(), newContactDetails.trim());
+    if (newContactName.trim()) {
+      onAddContact(
+        newContactName.trim(),
+        newContactPhone.trim(),
+        newContactEmail.trim(),
+        newContactAddress.trim()
+      );
       setNewContactName('');
-      setNewContactDetails('');
+      setNewContactPhone('');
+      setNewContactEmail('');
+      setNewContactAddress('');
       setIsContactDialogOpen(false);
     }
   };
@@ -208,12 +217,31 @@ export function ComposerControls({
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="new-contact-details">Details</Label>
-                  <Textarea 
-                    id="new-contact-details"
+                  <Label htmlFor="new-contact-phone">Phone Number</Label>
+                  <Input
+                    id="new-contact-phone"
+                    placeholder="e.g. 555-123-4567"
+                    value={newContactPhone}
+                    onChange={(e) => setNewContactPhone(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="new-contact-email">Email</Label>
+                  <Input
+                    id="new-contact-email"
+                    type="email"
+                    placeholder="e.g. john@example.com"
+                    value={newContactEmail}
+                    onChange={(e) => setNewContactEmail(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="new-contact-address">Address</Label>
+                  <Textarea
+                    id="new-contact-address"
                     placeholder="123 Main St..."
-                    value={newContactDetails}
-                    onChange={(e) => setNewContactDetails(e.target.value)}
+                    value={newContactAddress}
+                    onChange={(e) => setNewContactAddress(e.target.value)}
                   />
                 </div>
               </div>
@@ -234,12 +262,16 @@ export function ComposerControls({
                   <div className="space-y-2">
                     {contacts.map(contact => (
                       <div key={contact.id} className="flex items-center justify-between p-2 rounded-md border border-border/50">
-                        <div className="text-sm">
-                           <p className="font-semibold">{contact.name}</p>
-                           <p className="text-muted-foreground text-xs whitespace-pre-wrap">{contact.details}</p>
+                        <div className="text-sm overflow-hidden">
+                           <p className="font-semibold truncate">{contact.name}</p>
+                           <div className="text-muted-foreground text-xs whitespace-pre-wrap">
+                             {contact.phone && <p className="truncate">T: {contact.phone}</p>}
+                             {contact.email && <p className="truncate">E: {contact.email}</p>}
+                             {contact.address && <p className="truncate">A: {contact.address}</p>}
+                           </div>
                         </div>
                         <div className='flex gap-1'>
-                            <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => onAddContactText(`${contact.name}\n${contact.details}`)}>
+                            <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => onAddContactText(`${contact.name}${contact.phone ? `\n${contact.phone}` : ''}`)}>
                                 <Plus className="h-4 w-4" />
                             </Button>
                             <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => onDeleteContact(contact.id)}>

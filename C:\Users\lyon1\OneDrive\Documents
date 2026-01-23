@@ -3,7 +3,17 @@
     "id": "HFQU1ckxbghgoiV7GXu3L",
     "name": "Untitled Ticket",
     "backgroundImageUrl": "/Ticket.png",
-    "texts": [],
+    "texts": [
+      {
+        "id": "YhmEhSKtvKggXstV9XQJH",
+        "text": "Test",
+        "x": 395.06142677649035,
+        "y": 608.8161384894597,
+        "fontSize": 47,
+        "fontFamily": "Inter",
+        "color": "#000000"
+      }
+    ],
     "canvasWidth": 2550,
     "canvasHeight": 3300,
     "createdAt": 1769032055008

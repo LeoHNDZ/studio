@@ -76,7 +76,26 @@ export default function EditPageClient({ compositionId, initialTicket }: EditPag
     try {
       const savedContacts = localStorage.getItem('contacts');
       if (savedContacts) {
-        setContacts(JSON.parse(savedContacts));
+        const parsedContacts = JSON.parse(savedContacts);
+        // Migration for old contact format
+        const migratedContacts = parsedContacts.map((c: any) => {
+          if (typeof c.details !== 'undefined') {
+            return {
+              id: c.id,
+              name: c.name,
+              phone: '',
+              email: '',
+              address: c.details,
+            };
+          }
+          return {
+            ...c,
+            phone: c.phone || '',
+            email: c.email || '',
+            address: c.address || '',
+          };
+        });
+        setContacts(migratedContacts);
       }
     } catch (error) {
       console.error("Failed to load contacts from localStorage", error);
@@ -103,8 +122,8 @@ export default function EditPageClient({ compositionId, initialTicket }: EditPag
     }
   };
 
-  const addContact = (name: string, details: string) => {
-    const newContact: Contact = { id: nanoid(), name, details };
+  const addContact = (name: string, phone: string, email: string, address: string) => {
+    const newContact: Contact = { id: nanoid(), name, phone, email, address };
     const updatedContacts = [...contacts, newContact];
     saveContacts(updatedContacts);
   };
