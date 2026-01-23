@@ -26,6 +26,13 @@ import { Card, CardContent } from './ui/card';
 import { ScrollArea } from './ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
 import { suggestQuote } from '@/ai/flows/suggest-quote';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 interface ComposerControlsProps {
   onClearBackground: () => void;
@@ -137,17 +144,38 @@ export function ComposerControls({
     <Accordion type="multiple" defaultValue={['item-1', 'item-2', 'item-3', 'item-4', 'item-5']} className="w-full">
       <AccordionItem value="item-1">
         <AccordionTrigger className="px-4">Ticket</AccordionTrigger>
-        <AccordionContent className="px-4 space-y-2">
+        <AccordionContent className="px-4 space-y-4">
           {activeTicket && (
-            <div className="space-y-2">
-              <Label htmlFor="ticket-name">Name</Label>
-              <Input
-                id="ticket-name"
-                value={activeTicket.name}
-                onChange={(e) => onUpdateActiveTicket({ name: e.target.value })}
-                className="w-full bg-background/50"
-              />
-            </div>
+            <>
+              <div className="space-y-2">
+                <Label htmlFor="ticket-name">Name</Label>
+                <Input
+                  id="ticket-name"
+                  value={activeTicket.name}
+                  onChange={(e) => onUpdateActiveTicket({ name: e.target.value })}
+                  className="w-full bg-background/50"
+                />
+              </div>
+              <div className="space-y-2">
+                  <Label htmlFor="assign-contact">Assign Contact</Label>
+                  <Select
+                      value={activeTicket.contactId || ''}
+                      onValueChange={(contactId) => onUpdateActiveTicket({ contactId: contactId || null })}
+                  >
+                      <SelectTrigger id="assign-contact" className="w-full bg-background/50">
+                          <SelectValue placeholder="Select a contact" />
+                      </SelectTrigger>
+                      <SelectContent>
+                          <SelectItem value="">None</SelectItem>
+                          {contacts.map((contact) => (
+                              <SelectItem key={contact.id} value={contact.id}>
+                                  {contact.name}
+                              </SelectItem>
+                          ))}
+                      </SelectContent>
+                  </Select>
+              </div>
+            </>
           )}
         </AccordionContent>
       </AccordionItem>
@@ -347,5 +375,3 @@ export function ComposerControls({
     </Accordion>
   );
 }
-
-    

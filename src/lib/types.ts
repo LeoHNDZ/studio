@@ -26,6 +26,5 @@ export type Ticket = {
   canvasWidth: number;
   canvasHeight: number;
   createdAt: number;
+  contactId?: string | null;
 };
-
-    
