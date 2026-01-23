@@ -137,6 +137,7 @@ const defaultTicket = (width: number, height: number): Ticket => ({
   canvasWidth: width,
   canvasHeight: height,
   createdAt: Date.now(),
+  dueDate: null,
 });
 
 

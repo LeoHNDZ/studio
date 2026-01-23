@@ -34,7 +34,7 @@ import {
 } from './ui/dropdown-menu';
 import { Checkbox } from './ui/checkbox';
 
-type SortKey = 'name' | 'createdAt' | 'contactName';
+type SortKey = 'name' | 'createdAt' | 'contactName' | 'dueDate';
 type SortDirection = 'asc' | 'desc';
 
 interface TicketListProps {
@@ -66,6 +66,21 @@ export function TicketList({ tickets, contacts, onDelete, onDeleteMultiple }: Ti
           return ticketNameMatch || contactNameMatch;
       })
       .sort((a, b) => {
+        if (sortKey === 'dueDate') {
+            const aDate = a.dueDate;
+            const bDate = b.dueDate;
+
+            if (aDate === bDate) return 0;
+            if (aDate === null || aDate === undefined) return 1;
+            if (bDate === null || bDate === undefined) return -1;
+            
+            if (sortDirection === 'asc') {
+                return aDate - bDate;
+            } else {
+                return bDate - aDate;
+            }
+        }
+        
         const aValue = a[sortKey] || '';
         const bValue = b[sortKey] || '';
 
@@ -130,6 +145,7 @@ export function TicketList({ tickets, contacts, onDelete, onDeleteMultiple }: Ti
     if (sortKey === 'name') return 'Name';
     if (sortKey === 'createdAt') return 'Date';
     if (sortKey === 'contactName') return 'Contact';
+    if (sortKey === 'dueDate') return 'Due Date';
     return '';
   }
 
@@ -176,6 +192,7 @@ export function TicketList({ tickets, contacts, onDelete, onDeleteMultiple }: Ti
                         <DropdownMenuItem onClick={() => handleSort('name')}>Name</DropdownMenuItem>
                         <DropdownMenuItem onClick={() => handleSort('contactName')}>Contact</DropdownMenuItem>
                         <DropdownMenuItem onClick={() => handleSort('createdAt')}>Date</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleSort('dueDate')}>Due Date</DropdownMenuItem>
                     </DropdownMenuContent>
                 </DropdownMenu>
             </div>
@@ -211,6 +228,15 @@ export function TicketList({ tickets, contacts, onDelete, onDeleteMultiple }: Ti
                     </TableHead>
                     <TableHead
                         className="cursor-pointer hover:bg-muted/50"
+                        onClick={() => handleSort('dueDate')}
+                    >
+                       <div className='flex items-center'>
+                         Due Date
+                         {sortKey === 'dueDate' && <ArrowUpDown className="ml-2 h-4 w-4" />}
+                       </div>
+                    </TableHead>
+                    <TableHead
+                        className="cursor-pointer hover:bg-muted/50"
                         onClick={() => handleSort('createdAt')}
                     >
                        <div className='flex items-center'>
@@ -234,6 +260,7 @@ export function TicketList({ tickets, contacts, onDelete, onDeleteMultiple }: Ti
                         <TableCell className="font-medium">{ticket.name}</TableCell>
                         <TableCell>{ticket.texts.length}</TableCell>
                         <TableCell>{ticket.contactName || 'N/A'}</TableCell>
+                        <TableCell>{ticket.dueDate ? new Date(ticket.dueDate).toLocaleDateString() : 'N/A'}</TableCell>
                         <TableCell>{new Date(ticket.createdAt).toLocaleDateString()}</TableCell>
                         <TableCell className="text-right">
                              <div className='flex items-center justify-end gap-2'>

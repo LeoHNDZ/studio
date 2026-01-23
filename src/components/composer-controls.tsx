@@ -21,7 +21,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, Trash2, X, UserPlus, BookUser, Check, RefreshCcw, BrainCircuit, Edit } from 'lucide-react';
+import { Plus, Trash2, X, UserPlus, BookUser, Check, RefreshCcw, BrainCircuit, Edit, Calendar as CalendarIcon } from 'lucide-react';
 import { Card, CardContent } from './ui/card';
 import { ScrollArea } from './ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
@@ -33,6 +33,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { format } from 'date-fns';
+import { cn } from '@/lib/utils';
+import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
 
 interface ComposerControlsProps {
   onClearBackground: () => void;
@@ -159,7 +163,7 @@ export function ComposerControls({
               <div className="space-y-2">
                   <Label htmlFor="assign-contact">Assign Contact</Label>
                   <Select
-                      value={activeTicket.contactId || ''}
+                      value={activeTicket.contactId || 'none'}
                       onValueChange={(contactId) => onUpdateActiveTicket({ contactId: contactId === 'none' ? null : contactId })}
                   >
                       <SelectTrigger id="assign-contact" className="w-full bg-background/50">
@@ -174,6 +178,31 @@ export function ComposerControls({
                           ))}
                       </SelectContent>
                   </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Due Date</Label>
+                <Popover>
+                    <PopoverTrigger asChild>
+                        <Button
+                            variant={"outline"}
+                            className={cn(
+                                "w-full justify-start text-left font-normal bg-background/50",
+                                !activeTicket.dueDate && "text-muted-foreground"
+                            )}
+                        >
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {activeTicket.dueDate ? format(new Date(activeTicket.dueDate), "PPP") : <span>Pick a date</span>}
+                        </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                            mode="single"
+                            selected={activeTicket.dueDate ? new Date(activeTicket.dueDate) : undefined}
+                            onSelect={(date) => onUpdateActiveTicket({ dueDate: date ? date.getTime() : null })}
+                            initialFocus
+                        />
+                    </PopoverContent>
+                </Popover>
               </div>
             </>
           )}
