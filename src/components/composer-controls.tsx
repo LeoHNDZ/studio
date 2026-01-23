@@ -160,13 +160,13 @@ export function ComposerControls({
                   <Label htmlFor="assign-contact">Assign Contact</Label>
                   <Select
                       value={activeTicket.contactId || ''}
-                      onValueChange={(contactId) => onUpdateActiveTicket({ contactId: contactId || null })}
+                      onValueChange={(contactId) => onUpdateActiveTicket({ contactId: contactId === 'none' ? null : contactId })}
                   >
                       <SelectTrigger id="assign-contact" className="w-full bg-background/50">
                           <SelectValue placeholder="Select a contact" />
                       </SelectTrigger>
                       <SelectContent>
-                          <SelectItem value="">None</SelectItem>
+                          <SelectItem value="none">None</SelectItem>
                           {contacts.map((contact) => (
                               <SelectItem key={contact.id} value={contact.id}>
                                   {contact.name}
