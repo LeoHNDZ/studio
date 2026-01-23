@@ -180,14 +180,14 @@ export function ComposerControls({
                   </Select>
               </div>
               <div className="space-y-2">
-                <Label>Due Date &amp; Time</Label>
-                <div className="flex items-center gap-2">
+                <Label>Due Date & Time</Label>
+                <div className="space-y-2">
                     <Popover>
                         <PopoverTrigger asChild>
                             <Button
                                 variant={"outline"}
                                 className={cn(
-                                    "flex-grow justify-start text-left font-normal bg-background/50",
+                                    "w-full justify-start text-left font-normal bg-background/50",
                                     !activeTicket.dueDate && "text-muted-foreground"
                                 )}
                             >
@@ -221,7 +221,7 @@ export function ComposerControls({
                     </Popover>
                     <Input
                         type="time"
-                        className="w-auto bg-background/50"
+                        className="w-full bg-background/50"
                         value={activeTicket.dueDate ? format(new Date(activeTicket.dueDate), 'HH:mm') : ''}
                         onChange={(e) => {
                             const time = e.target.value;
