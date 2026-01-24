@@ -4,7 +4,7 @@
 import * as React from 'react';
 import type { Ticket, Contact } from '@/lib/types';
 import { Button } from '@/components/ui/button';
-import { Plus, Cog, Download } from 'lucide-react';
+import { Plus, Cog, Download, List, Calendar } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { TicketList } from '@/components/ticket-list';
 import { createTicket, deleteTicket, deleteTickets, getTickets, getDbPath, updateDbPath, getDbContent } from '@/lib/actions';
@@ -20,6 +20,8 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { TimeframeView } from '@/components/timeframe-view';
 
 
 export default function DashboardPage() {
@@ -243,12 +245,33 @@ export default function DashboardPage() {
       </header>
       <main className="container mx-auto p-4">
         {dbPath ? (
-            <TicketList 
-                tickets={tickets} 
-                contacts={contacts}
-                onDelete={handleDeleteTicket}
-                onDeleteMultiple={handleDeleteTickets}
-            />
+            <Tabs defaultValue="timeframe" className="w-full">
+              <TabsList className="grid w-full grid-cols-2 max-w-sm mx-auto">
+                <TabsTrigger value="timeframe">
+                  <Calendar className="mr-2 h-4 w-4" />
+                  Timeframe
+                </TabsTrigger>
+                <TabsTrigger value="list">
+                  <List className="mr-2 h-4 w-4" />
+                  List
+                </TabsTrigger>
+              </TabsList>
+              <TabsContent value="timeframe" className="mt-4">
+                <TimeframeView 
+                  tickets={tickets} 
+                  contacts={contacts}
+                  onDelete={handleDeleteTicket}
+                />
+              </TabsContent>
+              <TabsContent value="list" className="mt-4">
+                <TicketList 
+                    tickets={tickets} 
+                    contacts={contacts}
+                    onDelete={handleDeleteTicket}
+                    onDeleteMultiple={handleDeleteTickets}
+                />
+              </TabsContent>
+            </Tabs>
         ) : (
             <div className="text-center py-16">
                 <h2 className="text-xl font-semibold">No Database Selected</h2>
