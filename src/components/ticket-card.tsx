@@ -54,14 +54,15 @@ export function TicketCard({ ticket, contact, onDelete }: TicketCardProps) {
                 <CardTitle className="text-lg font-bold truncate">{ticket.name}</CardTitle>
             </CardHeader>
             <CardContent className="flex-grow space-y-3">
-                {contact && (
+                {contact ? (
                     <Badge variant="secondary" className="font-normal">{contact.name}</Badge>
+                ) : (
+                    <Badge variant="outline" className="font-normal">No contact assigned</Badge>
                 )}
                 <div className="flex items-center text-sm text-muted-foreground gap-2">
                     <Calendar className="h-4 w-4" />
                     <span>{formatTimeframe()}</span>
                 </div>
-                 <p className="text-sm text-muted-foreground">{ticket.texts.length} elements</p>
             </CardContent>
             <CardFooter className="flex justify-end gap-2">
                 <Link href={`/edit/${ticket.id}`} passHref>
