@@ -64,5 +64,26 @@
     "createdAt": 1769539234486,
     "dueDateStart": null,
     "dueDateEnd": null
+  },
+  {
+    "id": "vZOugULAL7ytZmMBR9VlF",
+    "name": "Untitled Ticket",
+    "backgroundImageUrl": "/Ticket.png",
+    "texts": [
+      {
+        "id": "ceaGkALSN3dooewLpUZey",
+        "text": "New ",
+        "x": 406.1857060055287,
+        "y": 725.3277666573064,
+        "fontSize": 47,
+        "fontFamily": "Inter",
+        "color": "#000000"
+      }
+    ],
+    "canvasWidth": 2550,
+    "canvasHeight": 3300,
+    "createdAt": 1769540981330,
+    "dueDateStart": null,
+    "dueDateEnd": null
   }
 ]
