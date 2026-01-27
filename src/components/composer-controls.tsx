@@ -350,6 +350,28 @@ export function ComposerControls({
                      className="bg-background/50"
                   />
                 </div>
+                <div className="flex gap-2">
+                    <div className="space-y-2 w-1/2">
+                        <Label htmlFor="pos-x">X</Label>
+                        <Input
+                            id="pos-x"
+                            type="number"
+                            value={Math.round(selectedText.x)}
+                            onChange={(e) => onUpdateText(selectedText.id, { x: parseInt(e.target.value, 10) })}
+                            className="bg-background/50"
+                        />
+                    </div>
+                    <div className="space-y-2 w-1/2">
+                        <Label htmlFor="pos-y">Y</Label>
+                        <Input
+                            id="pos-y"
+                            type="number"
+                            value={Math.round(selectedText.y)}
+                            onChange={(e) => onUpdateText(selectedText.id, { y: parseInt(e.target.value, 10) })}
+                            className="bg-background/50"
+                        />
+                    </div>
+                </div>
                 <div className="space-y-2">
                   <Label htmlFor="color">Color</Label>
                   <Input
