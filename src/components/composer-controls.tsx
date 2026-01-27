@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from 'react';
@@ -41,7 +42,7 @@ interface ComposerControlsProps {
   onRestoreBackground: () => void;
   onAddText: (text: string) => void;
   selectedText: TextElement | null;
-  onUpdateText: (id: string, newProps: Partial<TextElement>>) => void;
+  onUpdateText: (id: string, newProps: Partial<TextElement>) => void;
   onDeleteText: (id: string) => void;
   hasBackgroundImage: boolean;
   contacts: Contact[];
